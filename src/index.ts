@@ -39,6 +39,11 @@ export {
 
 export { loadNodeEnv, loadViteEnv } from "./loaders/index.js";
 export { loadDotenvFile, parseDotenv } from "./loaders/dotenv-file.js";
+export {
+  loadDotenvCascade,
+  type LoadDotenvCascadeOptions,
+  type DotenvCascadeResult,
+} from "./loaders/dotenv-cascade.js";
 
 export { deepMerge, type DeepPartial } from "./utils/deep-merge.js";
 export { mergePerEnv } from "./utils/merge-per-env.js";

@@ -233,6 +233,33 @@ src/
   with at least one runnable `@example`.
 - **`peerDependencies: { zod }`** — never bundle zod, never pin it.
 
+## The `.env.<mode>` cascade (`loadDotenvCascade`)
+
+Opt-in helper that follows the Vite / Next.js / dotenv-flow naming
+convention. Load order (later wins; `process.env` always wins on top):
+
+1. `.env`                — base, committed
+2. `.env.local`          — personal overrides, gitignored
+3. `.env.<mode>`         — env-specific
+4. `.env.<mode>.local`   — env-specific local, gitignored
+5. `process.env`         — always wins
+
+`mode` resolves from `process.env[appEnvKey]`, then `.env`'s value,
+then `defaultMode` (`'local'` by default). `.local` files are skipped
+in `'test'` mode by default.
+
+```ts
+import { loadDotenvCascade } from "@changsik00/node-settings";
+const { env, mode, loaded, skipped } = loadDotenvCascade({
+  cwd: process.cwd(),
+  appEnvKey: "APP_ENV",
+  defaultMode: "local",
+});
+```
+
+The library does *not* call this automatically. Users opt in by
+calling it explicitly at boot and passing the result to the loader.
+
 ## How `APP_ENV` gets set
 
 The library reads `APP_ENV` (or whatever `envKey` is named) from

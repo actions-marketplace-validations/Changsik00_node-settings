@@ -3,6 +3,44 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] — 2026-05-15
+
+### Added — `loadDotenvCascade()` helper
+
+Adopt the file-naming convention every other Node tool already uses
+(Next.js, Vite, dotenv-flow, Create React App). The library previously
+left env-loading entirely to the host app; this opt-in helper closes
+the gap so users can drop `.env.local` / `.env.<mode>` files at the
+project root and have them load in the right order.
+
+- **`loadDotenvCascade({ cwd?, appEnvKey?, defaultMode?, skipLocalFor?, source? })`**
+  exported from the package root and `./loaders`. Returns `{ env,
+  mode, loaded, skipped }`.
+- Load order (later wins, `process.env` always tops):
+  1. `.env`                  — base, committed
+  2. `.env.local`            — personal overrides, gitignored
+  3. `.env.<mode>`           — env-specific
+  4. `.env.<mode>.local`     — env-specific local, gitignored
+  5. `process.env`           — always wins
+- Mode resolves from `process.env[appEnvKey]`, then `.env`'s value,
+  then `defaultMode` (default `'local'`).
+- `.local` files are skipped in `'test'` mode by default (same as Vite
+  / Next). Customise via `skipLocalFor`.
+- The existing committed templates in `examples/env-samples/` plug
+  straight in: drop the `.sample` suffix and the cascade picks them up.
+
+### Updated
+
+- README — new "Local development — the `.env.<mode>` cascade"
+  subsection, plus a feature-grid bullet.
+- AGENTS.md — new section documenting the cascade for AI assistants.
+
+### Internal
+
+- 9 cascade tests covering load order, `process.env` precedence,
+  mode discovery from `.env`, `skipLocalFor`, custom `appEnvKey`,
+  empty cwd. 87 tests across 15 files.
+
 ## [0.3.0] — 2026-05-15
 
 ### Added — per-env env samples + platform documentation

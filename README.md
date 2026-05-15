@@ -43,6 +43,7 @@ One zod schema → typed runtime config + `.env.example` + Markdown docs + Kuber
 - **CI gate, not a vibe.** `node-settings validate` and `check` exit non-zero and tell you exactly what's wrong.
 - **Auto secret detection.** `PASSWORD` / `TOKEN` / `SECRET` / `API_KEY` / `PRIVATE_KEY` / `CREDENTIAL` patterns split into the Secret manifest automatically; `@secret` / `@public` tags override.
 - **Stable error API.** Every thrown error is a `NodeSettingsError` with a string `code` you can switch on.
+- **`.env.<mode>` cascade.** Opt-in `loadDotenvCascade()` follows the Vite / Next.js / dotenv-flow naming convention so you can drop `.env.local` / `.env.dev` / `.env.prod` files in the project root and have them load in the right order.
 - **Tiny.** No runtime deps beyond zod (peer) and jiti (TS config loading); ESM-only; Node ≥ 18.
 
 ```
@@ -193,16 +194,50 @@ Below are the patterns each common platform uses.
 when `APP_ENV` is unset — you simply run in `local` mode. So you only
 need to set `APP_ENV` explicitly in deployed environments.
 
-### Local development
+### Local development — the `.env.<mode>` cascade
 
-```bash
-# .env at project root, loaded via dotenv before `settings(process.env)`
-APP_ENV=local
-DB_HOST=localhost
-DB_PASSWORD=local-dev-password
+The library ships a `loadDotenvCascade()` helper that picks up the
+file-naming convention every other Node tool uses (Next.js, Vite,
+dotenv-flow). Drop the right files in the project root and the helper
+loads them in the right order:
+
+```
+.env                       ← base, committed
+.env.local                 ← personal local overrides, gitignored
+.env.<APP_ENV>            ← environment-specific (.env.dev, .env.prod, ...)
+.env.<APP_ENV>.local      ← personal env-specific local, gitignored
+process.env               ← always wins (deployment platform's values)
 ```
 
-Or in `package.json` scripts:
+Wire it up at boot:
+
+```ts
+import { defineSettings, loadDotenvCascade } from "@changsik00/node-settings";
+import settings from "./settings.config.js";
+
+const { env, mode, loaded } = loadDotenvCascade();
+console.log(`Booting in '${mode}' mode. Loaded:`, loaded);
+export const cfg = settings(env);
+```
+
+Mode detection (`mode` is what `.env.<mode>` resolves to):
+
+1. `process.env.APP_ENV` if set, else
+2. the `APP_ENV` value parsed out of `.env`, else
+3. the `defaultMode` option (`'local'` by default).
+
+In `test` mode the two `.local` files are skipped — same convention as
+Next/Vite — so CI runs aren't affected by developer-local overrides.
+
+The committed templates in [`examples/env-samples/`](./examples/env-samples)
+plug straight in: drop `.sample` and the cascade picks them up.
+
+```bash
+cp examples/env-samples/.env.local.sample .env.local
+cp examples/env-samples/.env.prod.sample  .env.prod
+```
+
+Alternatively, set `APP_ENV` inline if you don't want files:
 
 ```json
 {
@@ -212,9 +247,6 @@ Or in `package.json` scripts:
   }
 }
 ```
-
-See [`examples/env-samples/`](./examples/env-samples) for templates per
-environment, and regenerate them with `node-settings generate envs`.
 
 ### Docker
 
