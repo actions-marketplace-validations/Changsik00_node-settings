@@ -303,12 +303,16 @@ src/
 
 ## Verification layers (running `pnpm verify`)
 
-Five layers in order, used to ship to npm with confidence:
+Seven layers in order, used to ship to npm with confidence:
 
-1. **`pnpm typecheck`** — `tsc --noEmit`.
-2. **`pnpm test`** — vitest. Includes unit tests, CLI e2e tests
-   (`src/cli/cli-e2e.test.ts`), and generator snapshot tests
-   (`src/generators/snapshots.test.ts`).
+1. **`pnpm typecheck`** — `tsc --noEmit`. Includes the type tests
+   (`src/types.test.ts`) which guard TypeScript-level contracts via
+   `expectTypeOf` (extends merging, `todo(): never`, `NodeSettingsErrorCode`
+   union, etc.).
+2. **`pnpm test:coverage`** — vitest with `@vitest/coverage-v8`.
+   Floors: lines 80, statements 80, functions 85, branches 80. Includes
+   unit tests, CLI e2e (`src/cli/cli-e2e.test.ts`), generator snapshots
+   (`src/generators/snapshots.test.ts`), and type tests.
 3. **`pnpm build`** — `tsc -b tsconfig.build.json`.
 4. **`pnpm verify:dist`** — `scripts/verify-dist.mjs`. Imports built
    `dist/index.js`, `dist/generators/index.js`, `dist/cli/index.js`,
@@ -316,12 +320,18 @@ Five layers in order, used to ship to npm with confidence:
    `NodeSettingsError(PER_ENV_TODO)` contract.
 5. **`pnpm verify:sample`** — runs the CLI binary against
    `sample/settings.ts` to catch packaging regressions.
-6. **`pnpm verify:pack`** — `scripts/verify-pack.mjs`. Runs
+6. **`pnpm verify:api`** — `scripts/verify-api.mjs`. Compares each
+   built entry-point `.d.ts` (root / generators / cli) against the
+   committed snapshots in `api-surface/`. Drift fails CI; accept via
+   `node scripts/verify-api.mjs --update`.
+7. **`pnpm verify:pack`** — `scripts/verify-pack.mjs`. Runs
    `pnpm pack`, asserts required files present and forbidden files
-   (src, sample, tests, snapshots, docs, scripts, lockfile, tsconfig)
-   are NOT in the tarball.
+   (src, sample, api-surface, tests, snapshots, docs, scripts,
+   coverage, lockfile, tsconfig) are NOT in the tarball.
 
 CI runs all of these on every push / PR across Node 18 / 20 / 22.
+`prepublishOnly` runs verify:dist + verify:api + verify:pack so a
+broken bundle cannot ship.
 
 When the user reports a regression, the first question is: which
 layer would have caught it? If none would have, add coverage there.

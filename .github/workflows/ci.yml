@@ -31,8 +31,8 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Test
-        run: pnpm test
+      - name: Test (with coverage thresholds)
+        run: pnpm test:coverage
 
       - name: Build
         run: pnpm build
@@ -42,6 +42,9 @@ jobs:
 
       - name: Verify CLI against sample
         run: pnpm verify:sample
+
+      - name: Verify public API surface
+        run: pnpm verify:api
 
       - name: Verify pack contents
         run: pnpm verify:pack

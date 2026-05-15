@@ -88,6 +88,48 @@ describe("CLI e2e — inspect", () => {
   });
 });
 
+describe("CLI e2e — validate", () => {
+  it("returns 1 when the env file is missing required vars", async () => {
+    const envFile = join(tmp, ".env.local");
+    // Write a .env file that satisfies the sample schema...
+    require("node:fs").writeFileSync(
+      envFile,
+      "APP_ENV=local\nDB_HOST=h\nDB_PASSWORD=p\n",
+    );
+    const code = await runCli([
+      "validate",
+      envFile,
+      "--config",
+      SAMPLE,
+    ]);
+    expect(code).toBe(0);
+    expect(capture.logs.join("\n")).toContain("OK");
+  });
+
+  it("returns 1 when the env file is incomplete", async () => {
+    const envFile = join(tmp, ".env.broken");
+    require("node:fs").writeFileSync(envFile, "APP_ENV=local\n"); // missing DB_HOST
+    const code = await runCli([
+      "validate",
+      envFile,
+      "--config",
+      SAMPLE,
+    ]);
+    expect(code).toBe(1);
+    expect(capture.errs.join("\n")).toMatch(/FAIL|DB_HOST/);
+  });
+
+  it("returns 2 when the env file does not exist", async () => {
+    const code = await runCli([
+      "validate",
+      "/tmp/nonexistent-node-settings-test.env",
+      "--config",
+      SAMPLE,
+    ]);
+    expect(code).toBe(2);
+  });
+});
+
 describe("CLI e2e — check", () => {
   it("exits non-zero when prod has an unfilled todo and no envValues", async () => {
     const code = await runCli(["check", "--config", SAMPLE]);

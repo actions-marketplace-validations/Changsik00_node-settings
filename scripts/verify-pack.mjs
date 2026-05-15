@@ -59,6 +59,8 @@ const FORBIDDEN = [
   /^package\/docs\//,
   /^package\/scripts\//,
   /^package\/examples\//,
+  /^package\/api-surface\//,
+  /^package\/coverage\//,
   /^package\/\.github\//,
   /^package\/\.git\//,
   /pnpm-lock\.yaml$/,

@@ -1,6 +1,6 @@
 {
   "name": "@changsik00/node-settings",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Schema-first settings for Node apps: zod env validation + per-env layering + .env.example / Markdown docs / Kubernetes manifest generation, with a CLI for CI/CD validation.",
   "keywords": [
     "config",
@@ -63,12 +63,14 @@
     "dev": "tsc -b tsconfig.build.json --watch",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "verify:dist": "node scripts/verify-dist.mjs",
     "verify:pack": "node scripts/verify-pack.mjs",
     "verify:sample": "node dist/cli/bin.js inspect --config sample/settings.ts > /dev/null && node dist/cli/bin.js inspect --config sample/settings.ts --env=prod > /dev/null",
-    "verify": "pnpm run typecheck && pnpm run test && pnpm run build && pnpm run verify:dist && pnpm run verify:sample && pnpm run verify:pack",
-    "prepublishOnly": "pnpm run clean && pnpm run build && pnpm run verify:dist && pnpm run verify:pack"
+    "verify:api": "node scripts/verify-api.mjs",
+    "verify": "pnpm run typecheck && pnpm run test:coverage && pnpm run build && pnpm run verify:dist && pnpm run verify:sample && pnpm run verify:api && pnpm run verify:pack",
+    "prepublishOnly": "pnpm run clean && pnpm run build && pnpm run verify:dist && pnpm run verify:api && pnpm run verify:pack"
   },
   "peerDependencies": {
     "zod": "^3.23.0"
@@ -78,6 +80,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@vitest/coverage-v8": "^2.1.9",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0",
     "zod": "^3.23.0"

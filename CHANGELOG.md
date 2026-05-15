@@ -3,6 +3,57 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.10.0] — 2026-05-15
+
+### Added — three Tier-2 verification layers
+
+Closes the rest of the "how do we know this works?" gaps surfaced by
+the audit. The chain is now seven layers deep (typecheck → test+coverage
+→ build → dist → sample → api → pack) and runs on every push / PR.
+
+- **Type tests via `expectTypeOf`** (`src/types.test.ts`). 17 tests
+  guarding TypeScript-level contracts that erase at runtime:
+  - `defineSettings(...)` return type and tooling props
+    (`envFields`, `resolved`, `opts`).
+  - `extends: [base]` merges parent + child types into `build()`'s
+    `env` and `config` parameters.
+  - `todo()` returns `never` and is assignable to every field type.
+  - `inferAppEnv`, `loadDotenvCascade`, `presets.*`, `mergePerEnv`
+    each return the documented shape.
+  - `NodeSettingsErrorCode` is exactly the documented union (catches
+    accidental code additions / removals).
+- **Coverage thresholds** via `@vitest/coverage-v8`. Floors:
+  lines 80, statements 80, functions 85, branches 80. Current run:
+  lines 82.77 / functions 90.9 / branches 83 / statements 82.77.
+  Re-export-only index files, the bin shim, type-test files, and the
+  Vite-env placeholder are excluded from coverage. New
+  `pnpm test:coverage` script.
+- **Public API surface tracking** (`scripts/verify-api.mjs` +
+  `api-surface/{root,generators,cli}.d.ts`). Snapshots each entry
+  point's `.d.ts` declaration file. Drift fails CI with a pointer
+  to `--update`. Catches accidental additions / removals of types,
+  classes, functions, even subtle parameter-type changes — the
+  things `verify:dist` (runtime introspection only) can't see.
+- **Extra `validate` CLI tests** in `cli-e2e.test.ts` (the 3%
+  coverage outlier from before). 3 tests covering OK / fail /
+  missing-file paths.
+
+### Changed — `pnpm verify` chain extended
+
+The unified `pnpm verify` now runs:
+
+    typecheck → test:coverage → build → verify:dist
+              → verify:sample → verify:api → verify:pack
+
+`prepublishOnly` now also runs `verify:api` so a publish cannot
+ship an unintended API change.
+
+### Internal
+
+- 163 tests across 21 files (was 143). Coverage gate active.
+  `api-surface/` snapshots committed (45 lines total).
+  Typecheck + build + every verification layer clean.
+
 ## [0.9.0] — 2026-05-15
 
 ### Added — five new layers of verification
