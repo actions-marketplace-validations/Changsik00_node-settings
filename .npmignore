@@ -1,0 +1,15 @@
+src
+tests
+examples
+.github
+.editorconfig
+.gitignore
+.prettierignore
+.prettierrc*
+.eslintrc*
+eslint.config.js
+tsconfig*.json
+vitest.config.ts
+*.tsbuildinfo
+coverage
+.turbo

@@ -1,0 +1,82 @@
+{
+  "name": "@changsik00/node-settings",
+  "version": "0.1.0",
+  "description": "Schema-first settings for Node apps: zod env validation + per-env layering + .env.example / Markdown docs / Kubernetes manifest generation, with a CLI for CI/CD validation.",
+  "keywords": [
+    "config",
+    "configuration",
+    "settings",
+    "env",
+    "dotenv",
+    "zod",
+    "schema",
+    "validation",
+    "kubernetes",
+    "configmap",
+    "secret",
+    "12factor",
+    "build-once-deploy-many"
+  ],
+  "license": "MIT",
+  "author": "Changsik00 <lowmans00@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Changsik00/node-settings.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Changsik00/node-settings/issues"
+  },
+  "homepage": "https://github.com/Changsik00/node-settings#readme",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./generators": {
+      "types": "./dist/generators/index.d.ts",
+      "default": "./dist/generators/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli/index.d.ts",
+      "default": "./dist/cli/index.js"
+    }
+  },
+  "bin": {
+    "node-settings": "./dist/cli/bin.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "dev": "tsc -b tsconfig.build.json --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm run clean && pnpm run build"
+  },
+  "peerDependencies": {
+    "zod": "^3.23.0"
+  },
+  "dependencies": {
+    "jiti": "^2.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0",
+    "zod": "^3.23.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
