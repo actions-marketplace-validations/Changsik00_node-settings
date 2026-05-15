@@ -24,6 +24,7 @@ One zod schema → typed runtime config + `.env.example` + Markdown docs + Kuber
 npm install @changsik00/node-settings zod
 ```
 
+<!-- doc-test:check -->
 ```ts
 import { z } from "zod";
 import { defineSettings } from "@changsik00/node-settings";

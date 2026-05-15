@@ -1,7 +1,31 @@
 # Changelog
 
 All notable changes to this project are documented here. Versions follow
-[Semantic Versioning](https://semver.org/).
+[Semantic Versioning](https://semver.org/). The project uses tag-based
+releases — see [RELEASING.md](./RELEASING.md). Day-to-day changes land
+under `[Unreleased]` and are promoted to a versioned section when
+`pnpm release <version>` runs.
+
+## [Unreleased]
+
+### Added
+
+- Tag-based release flow (`RELEASING.md`, `scripts/release.mjs`,
+  `pnpm release <semver>`). Feature commits no longer touch
+  `package.json` `version`; the script handles bump + changelog
+  promotion + commit + tag + push as a single operation.
+- Doc code-block compile verification (`scripts/verify-docs.mjs`).
+  Extracts every ` ```ts ` / ` ```typescript ` block from `README.md`,
+  `AGENTS.md`, `RELEASING.md`, `docs/*.md`, and `sample/README.md`,
+  wraps each with a generous preamble, and runs `tsc --noEmit`. Catches
+  doc drift. Blocks can opt out via `<!-- doc-test:skip -->`.
+- macOS added to the CI matrix alongside Ubuntu — every push / PR now
+  runs the full verification chain on both, across Node 18 / 20 / 22
+  (6 jobs total).
+
+### Changed
+
+- `pnpm verify` chain now includes `verify:docs` and runs on macOS.
 
 ## [0.10.0] — 2026-05-15
 

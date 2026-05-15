@@ -36,6 +36,7 @@ cascade. That layers **env-var inputs**, not config values. See the
 
 Everything in one `settings.config.ts`. Best for small/medium apps.
 
+<!-- doc-test:check -->
 ```ts
 import { z } from "zod";
 import { defineSettings } from "@changsik00/node-settings";
