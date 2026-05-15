@@ -1,12 +1,48 @@
+<div align="center">
+
 # @changsik00/node-settings
 
-> Schema-first settings for Node apps. One zod schema → typed runtime config,
-> `.env.example`, Markdown docs, and Kubernetes manifests. Plus a CLI to
-> validate envs and gate deploys in CI.
+**Schema-first settings for Node apps.**
+One zod schema → typed runtime config + `.env.example` + Markdown docs + Kubernetes manifests, plus a CLI that gates deploys in CI.
 
+[![npm version](https://img.shields.io/npm/v/@changsik00/node-settings?color=cb3837&label=npm&logo=npm)](https://www.npmjs.com/package/@changsik00/node-settings)
 [![CI](https://github.com/Changsik00/node-settings/actions/workflows/ci.yml/badge.svg)](https://github.com/Changsik00/node-settings/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/@changsik00/node-settings.svg)](https://www.npmjs.com/package/@changsik00/node-settings)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
+[![Types: TypeScript](https://img.shields.io/badge/types-TypeScript-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Install size](https://packagephobia.com/badge?p=@changsik00/node-settings)](https://packagephobia.com/result?p=@changsik00/node-settings)
+[![Bundle size](https://img.shields.io/bundlephobia/minzip/@changsik00/node-settings?label=minzipped)](https://bundlephobia.com/package/@changsik00/node-settings)
+
+[**Quickstart**](#quick-start) · [**CLI**](#cli) · [**Monorepo**](#monorepo-support) · [**Errors**](#errors) · [**Why?**](#why-another-settings-library)
+
+</div>
+
+---
+
+## Table of contents
+
+- [Features at a glance](#features-at-a-glance)
+- [Why another settings library?](#why-another-settings-library)
+- [Install](#install)
+- [Quick start](#quick-start)
+- [CLI](#cli)
+- [Programmatic generator API](#programmatic-generator-api)
+- [Monorepo support](#monorepo-support)
+- [Layering model](#layering-model)
+- [Errors](#errors)
+- [License](#license)
+
+## Features at a glance
+
+- **One zod schema, four outputs.** Runtime settings, `.env.example`, Markdown docs, Kubernetes ConfigMap/Secret — all generated from the same definition.
+- **Build Once, Deploy Many.** One container image, `APP_ENV`-driven per-env layering. Nothing baked at build time.
+- **Typed end-to-end.** `defineSettings` returns a fully-typed loader; `build(env, config)` sees the inferred merged shape with `extends`.
+- **Monorepo-aware.** t3-oss/env-style `extends` for shared base configs; the CLI walks up to find `node-settings.config.*` like `tsc` does.
+- **Defensive at definition time.** Misconfiguration (wrong `envKey`, typo'd `perEnv` branch, missing override key) is caught when the loader is *defined*, not on the first request to prod.
+- **CI gate, not a vibe.** `node-settings validate` and `check` exit non-zero and tell you exactly what's wrong.
+- **Auto secret detection.** `PASSWORD` / `TOKEN` / `SECRET` / `API_KEY` / `PRIVATE_KEY` / `CREDENTIAL` patterns split into the Secret manifest automatically; `@secret` / `@public` tags override.
+- **Stable error API.** Every thrown error is a `NodeSettingsError` with a string `code` you can switch on.
+- **Tiny.** No runtime deps beyond zod (peer) and jiti (TS config loading); ESM-only; Node ≥ 18.
 
 ```
                 ┌──────────────────────────────────────────────┐
@@ -382,6 +418,54 @@ You can override:
   });
   ```
 
+## Errors
+
+Every error thrown by the package is a `NodeSettingsError`. Match on
+`.code` — never on `.message`, which can evolve.
+
+```ts
+import { NodeSettingsError } from "@changsik00/node-settings";
+
+try {
+  const cfg = settings(process.env);
+} catch (err) {
+  if (err instanceof NodeSettingsError) {
+    switch (err.code) {
+      case "ENV_VALIDATION_FAILED":
+        console.error("missing env vars — see schema for required keys");
+        break;
+      case "PER_ENV_BRANCH_MISSING":
+        console.error(`unknown APP_ENV value: ${err.message}`);
+        break;
+      default:
+        console.error(err.message);
+    }
+  }
+  process.exit(1);
+}
+```
+
+| Code                       | When                                                          |
+| -------------------------- | ------------------------------------------------------------- |
+| `INVALID_ENV_SCHEMA`       | `envSchema` is not a `z.object({...})`.                       |
+| `MISSING_ENV_KEY`          | `envKey` not in the (merged) schema.                          |
+| `INVALID_ENV_KEY_TYPE`     | `envKey` is not `z.string()` / `z.enum(...)`.                 |
+| `INVALID_OVERRIDE_KEY`     | `overrideEnvKey` not in the (merged) schema.                  |
+| `PER_ENV_EMPTY`            | `perEnv` has no branches.                                     |
+| `PER_ENV_KEY_NOT_IN_ENUM`  | `perEnv` branch is not a value of the `envKey` enum (typo).   |
+| `PER_ENV_BRANCH_MISSING`   | Runtime: no `perEnv` branch matches the parsed `envKey` value.|
+| `INVALID_EXTENDS_ITEM`     | `extends[i]` is not a `defineSettings(...)` return value.     |
+| `OVERRIDE_JSON_PARSE`      | `overrideEnvKey` env var is not valid JSON.                   |
+| `ENV_VALIDATION_FAILED`    | Zod env validation failed at runtime.                         |
+
+The first six surface at `defineSettings(...)` call time so misconfiguration
+fails fast — before the loader ever runs.
+
 ## License
 
 [MIT](./LICENSE) © Changsik00
+
+---
+
+<sub>Built for teams that ship the same image to many environments.
+See [AGENTS.md](./AGENTS.md) for an LLM-friendly summary of the API.</sub>

@@ -75,6 +75,11 @@ describe("defineSettings", () => {
     expect(() => settings({ ...baseEnv, APP_ENV: "stage" })).toThrow(
       /perEnv has no branch for 'stage'/,
     );
+    try {
+      settings({ ...baseEnv, APP_ENV: "stage" });
+    } catch (err) {
+      expect((err as { code?: string }).code).toBe("PER_ENV_BRANCH_MISSING");
+    }
   });
 
   it("applies CONFIG_OVERRIDE_JSON as the top layer", () => {

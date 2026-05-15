@@ -6,6 +6,8 @@ import {
   type EnvField,
   type IntrospectOptions,
 } from "./introspect.js";
+import { NodeSettingsError } from "./errors.js";
+import { validateDefineSettingsOptions } from "./validate-options.js";
 
 /**
  * A {@link SettingsLoader} whose generics are erased to broad bounds,
@@ -230,6 +232,12 @@ export function defineSettings<
 ): SettingsLoader<TSchema, TConfig, TSettings> {
   const extendsList = (opts.extends ?? []) as readonly AnySettingsLoader[];
 
+  // Validate extends first so that downstream resolve* don't blow up on
+  // garbage values with a less-helpful runtime error.
+  if (extendsList.length > 0) {
+    validateExtendsList(extendsList);
+  }
+
   const resolvedSchema = resolveEnvSchema(extendsList, opts.envSchema);
   const resolvedDefaults = resolveDefaults(
     extendsList,
@@ -241,6 +249,17 @@ export function defineSettings<
   );
   const resolvedOverrideEnvKey =
     opts.overrideEnvKey ?? findInheritedOverrideEnvKey(extendsList);
+
+  // Now validate the merged shape. Throws NodeSettingsError on the
+  // first problem so the misconfiguration is caught at define time.
+  validateDefineSettingsOptions({
+    ownEnvSchema: opts.envSchema,
+    resolvedEnvSchema: resolvedSchema,
+    envKey: opts.envKey as string,
+    overrideEnvKey: opts.overrideEnvKey as string | undefined,
+    resolvedPerEnv: resolvedPerEnv,
+    extendsList: extendsList,
+  });
 
   const resolved: ResolvedSettings = Object.freeze({
     envSchema: resolvedSchema,
@@ -260,19 +279,45 @@ export function defineSettings<
   const frozenOpts = Object.freeze({ ...opts });
 
   const load = ((rawEnv: Record<string, string | undefined>) => {
-    const env = resolvedSchema.parse(rawEnv) as Record<string, unknown>;
+    let env: Record<string, unknown>;
+    try {
+      env = resolvedSchema.parse(rawEnv) as Record<string, unknown>;
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        const details = err.errors
+          .map((e) => `  - ${e.path.join(".") || "(root)"}: ${e.message}`)
+          .join("\n");
+        throw new NodeSettingsError(
+          "ENV_VALIDATION_FAILED",
+          `env validation failed:\n${details}`,
+          {
+            hint: "Check that every required env var is set and matches the schema.",
+            cause: err,
+          },
+        );
+      }
+      throw err;
+    }
 
     const envValue = env[resolved.envKey];
     if (typeof envValue !== "string") {
-      throw new Error(
-        `[node-settings] env['${resolved.envKey}'] is not a string (got ${typeof envValue}).`,
+      throw new NodeSettingsError(
+        "INVALID_ENV_KEY_TYPE",
+        `env['${resolved.envKey}'] is not a string at runtime (got ${typeof envValue}).`,
+        {
+          hint: "The schema for envKey must produce a string. Check for transforms that change its type.",
+        },
       );
     }
     const envSpecific = resolvedPerEnv[envValue];
     if (!envSpecific) {
       const keys = Object.keys(resolvedPerEnv).join(", ");
-      throw new Error(
-        `[node-settings] perEnv has no branch for '${envValue}'. Known branches: ${keys}`,
+      throw new NodeSettingsError(
+        "PER_ENV_BRANCH_MISSING",
+        `perEnv has no branch for '${envValue}'. Known branches: ${keys}`,
+        {
+          hint: `Add perEnv['${envValue}'] = {...} or fix the value of env['${resolved.envKey}'].`,
+        },
       );
     }
 
@@ -328,6 +373,25 @@ export function defineSettings<
   });
 
   return load;
+}
+
+function validateExtendsList(
+  extendsList: readonly unknown[],
+): asserts extendsList is readonly AnySettingsLoader[] {
+  extendsList.forEach((parent, idx) => {
+    if (
+      typeof parent !== "function" ||
+      !("resolved" in (parent as unknown as Record<string, unknown>))
+    ) {
+      throw new NodeSettingsError(
+        "INVALID_EXTENDS_ITEM",
+        `extends[${idx}] is not a valid SettingsLoader.`,
+        {
+          hint: "Every extends[] entry must be the return value of defineSettings(...).",
+        },
+      );
+    }
+  });
 }
 
 function resolveEnvSchema(
@@ -388,8 +452,13 @@ function parseJsonOverride(
   try {
     parsed = JSON.parse(raw);
   } catch (err) {
-    throw new Error(
-      `[node-settings] override JSON parse failed: ${(err as Error).message}`,
+    throw new NodeSettingsError(
+      "OVERRIDE_JSON_PARSE",
+      `override JSON parse failed: ${(err as Error).message}`,
+      {
+        hint: "Set the override env var to a valid JSON object string, e.g. '{\"bucket\":\"x\"}'.",
+        cause: err,
+      },
     );
   }
   return validate

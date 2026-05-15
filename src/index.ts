@@ -26,6 +26,11 @@ export {
 } from "./define-settings.js";
 
 export {
+  NodeSettingsError,
+  type NodeSettingsErrorCode,
+} from "./errors.js";
+
+export {
   introspectEnvSchema,
   type EnvField,
   type IntrospectOptions,
