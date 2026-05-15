@@ -25,6 +25,7 @@ One zod schema → typed runtime config + `.env.example` + Markdown docs + Kuber
 - [Why another settings library?](#why-another-settings-library)
 - [Install](#install)
 - [Quick start](#quick-start)
+- [Setting `APP_ENV` across deployments](#setting-app_env-across-deployments)
 - [CLI](#cli)
 - [Programmatic generator API](#programmatic-generator-api)
 - [Monorepo support](#monorepo-support)
@@ -179,6 +180,177 @@ class FooService {
 }
 ```
 
+## Setting `APP_ENV` across deployments
+
+`node-settings` reads `process.env.APP_ENV` (or whatever `envKey` you
+pick) **as a plain environment variable**. It does not auto-detect the
+deployment environment — setting `APP_ENV` is the deployment platform's
+job, per [12-factor app](https://12factor.net/config) methodology.
+Below are the patterns each common platform uses.
+
+**Fallback for local dev:** if you give `envKey` a default
+(`z.enum(['local','dev','prod']).default('local')`), nothing breaks
+when `APP_ENV` is unset — you simply run in `local` mode. So you only
+need to set `APP_ENV` explicitly in deployed environments.
+
+### Local development
+
+```bash
+# .env at project root, loaded via dotenv before `settings(process.env)`
+APP_ENV=local
+DB_HOST=localhost
+DB_PASSWORD=local-dev-password
+```
+
+Or in `package.json` scripts:
+
+```json
+{
+  "scripts": {
+    "dev": "APP_ENV=local tsx src/main.ts",
+    "dev:integration": "APP_ENV=dev tsx src/main.ts"
+  }
+}
+```
+
+See [`examples/env-samples/`](./examples/env-samples) for templates per
+environment, and regenerate them with `node-settings generate envs`.
+
+### Docker
+
+Set at `docker run` time (preferred — keeps the image environment-agnostic):
+
+```bash
+docker run -e APP_ENV=dev my-app:latest
+```
+
+Or via `--env-file`:
+
+```bash
+docker run --env-file .env.dev my-app:latest
+```
+
+Avoid baking `ENV APP_ENV=…` into the `Dockerfile` — that breaks
+"build once, deploy many".
+
+### Docker Compose
+
+```yaml
+services:
+  api:
+    image: my-app:latest
+    environment:
+      APP_ENV: dev
+    # or:
+    env_file: .env.dev
+```
+
+### Kubernetes
+
+Use the auto-generated ConfigMap (one of the reasons this library
+exists):
+
+```bash
+node-settings generate k8s --name my-app --namespace prod --out k8s.yaml
+```
+
+The ConfigMap includes `APP_ENV: "prod"`. Attach it to your Deployment:
+
+```yaml
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          envFrom:
+            - configMapRef:
+                name: my-app-config
+            - secretRef:
+                name: my-app-secret
+```
+
+### GitHub Actions
+
+```yaml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+    steps:
+      - run: npx node-settings validate
+      - run: ./deploy.sh
+```
+
+### Vercel
+
+Set `APP_ENV` in **Project Settings → Environment Variables**, scoped
+per environment (Production / Preview / Development). Vercel also
+exposes its own `VERCEL_ENV` — you can map it in code if you prefer:
+
+```ts
+const APP_ENV = process.env.APP_ENV ?? process.env.VERCEL_ENV ?? "local";
+const settings = loader({ ...process.env, APP_ENV });
+```
+
+### Heroku
+
+```bash
+heroku config:set APP_ENV=prod --app my-app
+heroku config:set APP_ENV=stage --app my-app-stage
+```
+
+### AWS ECS / Fargate
+
+Set `APP_ENV` in the task definition `environment` block (and pull
+secrets from Secrets Manager via `secrets`):
+
+```json
+{
+  "containerDefinitions": [{
+    "environment": [{ "name": "APP_ENV", "value": "prod" }],
+    "secrets":     [{ "name": "DB_PASSWORD", "valueFrom": "arn:..." }]
+  }]
+}
+```
+
+### AWS Lambda
+
+Configure in **Configuration → Environment variables**, one stack /
+function per environment (typical Serverless Framework / SAM /
+SST pattern):
+
+```yaml
+# serverless.yml
+provider:
+  environment:
+    APP_ENV: ${self:custom.stage}
+```
+
+### Render / Railway / Fly.io
+
+Environment Variables panel in the dashboard, or via the platform CLI:
+
+```bash
+fly secrets set APP_ENV=prod
+railway variables set APP_ENV=prod
+```
+
+### `APP_ENV` vs `NODE_ENV` — which to use?
+
+| Var       | What it really means                                      | Use it for                |
+| --------- | --------------------------------------------------------- | ------------------------- |
+| `NODE_ENV` | Node.js convention: `development` \| `production` \| `test`. Affects `npm install --omit=dev`, framework optimizations, error verbosity. | Build-time and framework concerns. |
+| `APP_ENV`  | Your own deployment-environment label: `local`, `dev`, `stage`, `prod`, ... whatever you choose. | Per-environment config selection (this library). |
+
+Treat them as orthogonal. `NODE_ENV=production` may be true for *every*
+`APP_ENV` value other than `local` — keep them in separate columns of
+your env files and ConfigMaps.
+
+You can use `NODE_ENV` as your `envKey` if you only care about
+`production` vs `development`, but most real systems outgrow that
+quickly. Define `APP_ENV` from day one.
+
 ## CLI
 
 ```bash
@@ -190,6 +362,7 @@ npx node-settings check --env prod,stage
 
 # Generate artifacts from the schema
 npx node-settings generate env-example --out .env.example
+npx node-settings generate envs        --out-dir env-samples/      # one .env per perEnv branch
 npx node-settings generate docs        --out ENV.md
 npx node-settings generate k8s         --name my-app --namespace prod --out k8s.yaml
 ```
@@ -227,6 +400,7 @@ npx node-settings check --env prod \
 | Target        | Description                                                                   |
 | ------------- | ----------------------------------------------------------------------------- |
 | `env-example` | A heavily-commented `.env.example` file (groups secrets separately).          |
+| `envs`        | One `.env.<branch>.example` per `perEnv` branch, with `APP_ENV` pre-filled. Needs `--out-dir <dir>`. |
 | `docs`        | Markdown table for `ENV.md` — handoff doc for SRE / infra.                    |
 | `k8s`         | ConfigMap + Secret YAML (auto-splits secrets, opaque `stringData` by default).|
 

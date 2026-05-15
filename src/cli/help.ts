@@ -8,7 +8,7 @@ COMMANDS
   check                  Scan every per-env branch for placeholders and
                          missing required envs. Exits non-zero on errors.
   generate <target>      Generate artifacts from the schema.
-                         Targets: env-example | docs | k8s
+                         Targets: env-example | envs | docs | k8s
 
 GLOBAL OPTIONS
   --config <path>        Path to the settings config file.
@@ -25,6 +25,9 @@ check
     required env vars per branch.
 
 generate env-example   [--out <path>]
+generate envs          --out-dir <dir>
+                       Writes one .env.<branch>.example per perEnv branch
+                       (e.g. .env.local.example, .env.dev.example, .env.prod.example).
 generate docs          [--out <path>] [--title <s>] [--intro <s>]
 generate k8s --name <app> [--namespace <ns>] [--inline-secrets] [--out <path>]
 
@@ -32,6 +35,7 @@ EXAMPLES
   node-settings validate .env.production
   node-settings check --env prod,stage --env-file prod=.env.prod
   node-settings generate env-example --out .env.example
+  node-settings generate envs --out-dir env-samples/
   node-settings generate docs --out ENV.md
   node-settings generate k8s --name my-app --namespace prod --out k8s.yaml
 `;

@@ -51,11 +51,12 @@ Subcommands:
 
 | Command                                 | Purpose                                |
 | --------------------------------------- | -------------------------------------- |
-| `node-settings validate [env-file]`     | Run the schema against env (CI gate).  |
-| `node-settings check [--env name]`      | Per-env placeholder / required check.  |
-| `node-settings generate env-example`    | Write a `.env.example`.                |
-| `node-settings generate docs`           | Write Markdown env documentation.      |
-| `node-settings generate k8s --name X`   | Write ConfigMap + Secret YAML.         |
+| `node-settings validate [env-file]`     | Run the schema against env (CI gate).      |
+| `node-settings check [--env name]`      | Per-env placeholder / required check.      |
+| `node-settings generate env-example`    | Write a single `.env.example`.             |
+| `node-settings generate envs --out-dir` | One `.env.<branch>.example` per perEnv.    |
+| `node-settings generate docs`           | Write Markdown env documentation.          |
+| `node-settings generate k8s --name X`   | Write ConfigMap + Secret YAML.             |
 
 The CLI auto-discovers `node-settings.config.{ts,mts,js,mjs,cjs}` or
 `settings.config.{...}`, walking up to the nearest workspace boundary
@@ -231,6 +232,31 @@ src/
 - **Comments explain *why*, not *what***. Public functions have JSDoc
   with at least one runnable `@example`.
 - **`peerDependencies: { zod }`** — never bundle zod, never pin it.
+
+## How `APP_ENV` gets set
+
+The library reads `APP_ENV` (or whatever `envKey` is named) from
+`process.env`. It does not auto-detect — the deployment platform is
+responsible for setting the value. Default `envKey` in the schema
+gives a local-dev fallback.
+
+| Platform          | Set `APP_ENV` via                                                  |
+| ----------------- | ------------------------------------------------------------------ |
+| Local             | `.env` file + dotenv, or shell export                              |
+| Docker            | `docker run -e APP_ENV=dev`                                        |
+| Docker Compose    | `environment:` or `env_file:` in `docker-compose.yml`              |
+| Kubernetes        | ConfigMap from `node-settings generate k8s`                        |
+| GitHub Actions    | `env: APP_ENV: ${{ ... }}` on job/step                             |
+| Vercel            | Project Settings → Environment Variables, or map from `VERCEL_ENV` |
+| Heroku            | `heroku config:set APP_ENV=prod`                                   |
+| AWS ECS / Fargate | Task definition `environment` block                                |
+| AWS Lambda        | Function env vars (one stack per env)                              |
+| Render / Railway  | Dashboard env vars panel or `railway variables set`                |
+
+`APP_ENV` and `NODE_ENV` are orthogonal: `NODE_ENV` is the Node.js
+convention (development/production/test) and affects npm install,
+framework behavior. `APP_ENV` is this library's per-environment label
+and drives `perEnv` lookup.
 
 ## When the user asks…
 

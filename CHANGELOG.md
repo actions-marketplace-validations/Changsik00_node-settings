@@ -3,6 +3,34 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] — 2026-05-15
+
+### Added — per-env env samples + platform documentation
+
+- **`generate envs` CLI subcommand**. Emits one
+  `.env.<branch>.example` file per `perEnv` branch into `--out-dir`,
+  with the loader's `envKey` (e.g. `APP_ENV`) pre-filled and a comment
+  block summarising the layered config that branch resolves to.
+- **`generatePerEnvExamples(loader, options?)`** — programmatic helper
+  exported from `@changsik00/node-settings/generators`. Returns a
+  `Record<envName, string>` of generated `.env` contents.
+- **`generateEnvExample(fields, { values, ... })`** — the existing
+  helper now accepts a `values` map for pre-filling specific keys.
+- **Hand-written samples** in `examples/env-samples/` —
+  `.env.local.sample`, `.env.dev.sample`, `.env.stage.sample`,
+  `.env.prod.sample`, plus a README. The `.gitignore` no longer
+  ignores `*.sample` / `.env.*.example`.
+- **README — "Setting `APP_ENV` across deployments" section**. Concrete
+  patterns for Docker, Docker Compose, Kubernetes, GitHub Actions,
+  Vercel, Heroku, AWS ECS / Lambda, Render / Railway / Fly. Plus an
+  `APP_ENV` vs `NODE_ENV` clarification table.
+- **AGENTS.md** updated with the platform table and the new generator.
+
+### Internal
+
+- 6 new tests covering the values option and per-env helper. 78 tests
+  across 14 files. Typecheck + build clean.
+
 ## [0.2.0] — 2026-05-15
 
 ### Added — monorepo support

@@ -1,5 +1,9 @@
-import { writeFileSync } from "node:fs";
-import { generateEnvExample } from "../generators/env-example.js";
+import { writeFileSync, mkdirSync } from "node:fs";
+import { resolve } from "node:path";
+import {
+  generateEnvExample,
+  generatePerEnvExamples,
+} from "../generators/env-example.js";
 import { generateMarkdownDocs } from "../generators/markdown.js";
 import { generateK8sManifests } from "../generators/k8s.js";
 import { loadUserConfig } from "./load-user-config.js";
@@ -30,6 +34,29 @@ export async function runGenerate(args: ParsedArgs): Promise<number> {
     case "env": {
       output = generateEnvExample(loader.envFields);
       break;
+    }
+    case "envs":
+    case "per-env":
+    case "env-samples": {
+      const outDir = flagString(args, "out-dir") ?? flagString(args, "out");
+      if (!outDir) {
+        console.error(
+          "[node-settings] generate envs requires --out-dir <dir>",
+        );
+        return 2;
+      }
+      const examples = generatePerEnvExamples(loader);
+      mkdirSync(outDir, { recursive: true });
+      const written: string[] = [];
+      for (const [envName, contents] of Object.entries(examples)) {
+        const filename = `.env.${envName}.example`;
+        const fullPath = resolve(outDir, filename);
+        writeFileSync(fullPath, contents, "utf8");
+        written.push(fullPath);
+      }
+      console.error(`wrote ${written.length} file(s):`);
+      for (const p of written) console.error(`  ${p}`);
+      return 0;
     }
     case "docs":
     case "markdown":
@@ -63,7 +90,7 @@ export async function runGenerate(args: ParsedArgs): Promise<number> {
     }
     default: {
       console.error(
-        `[node-settings] unknown generate target '${target}'. Targets: env-example, docs, k8s`,
+        `[node-settings] unknown generate target '${target}'. Targets: env-example, envs, docs, k8s`,
       );
       return 2;
     }

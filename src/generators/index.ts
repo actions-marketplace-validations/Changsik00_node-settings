@@ -1,6 +1,8 @@
 export {
   generateEnvExample,
+  generatePerEnvExamples,
   type EnvExampleOptions,
+  type PerEnvExamplesOptions,
 } from "./env-example.js";
 export {
   generateMarkdownDocs,
