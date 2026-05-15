@@ -26,6 +26,12 @@ const envSchema = z.object({
   DB_HOST: z.string().describe("Primary database host"),
   DB_PASSWORD: z.string().describe("Primary database password"),
   REDIS_URL: z.string().optional(),
+
+  // CI-injected secrets live in envSchema, NOT in perEnv config.
+  // Optional in local; required by your CI workflow for deployed envs
+  // (enforce via a perEnv-aware check if needed, or split the schema).
+  SENTRY_DSN: z.string().optional().describe("Sentry DSN @secret"),
+
   CONFIG_OVERRIDE_JSON: z.string().optional(),
 });
 
@@ -40,9 +46,10 @@ const settings = defineSettings({
     dbHost: env.DB_HOST,
     dbPassword: env.DB_PASSWORD,
     redisUrl: env.REDIS_URL,
+    sentryDsn: env.SENTRY_DSN, // ← comes from env, set by CI/infra at deploy time
     bucket: config.bucket,
     region: config.region,
-    sentryDsn: config.sentryDsn,
+    cdnDomain: config.cdnDomain,
     workerConcurrency: config.workerConcurrency,
     logLevel: config.logLevel,
     featureFlags: config.featureFlags,

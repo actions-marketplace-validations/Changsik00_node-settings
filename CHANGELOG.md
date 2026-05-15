@@ -3,6 +3,49 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.7.1] — 2026-05-15
+
+### Fixed — sample conflated two distinct value patterns
+
+The 0.7.0 sample used `todo(...)` on `sentryDsn` inside `perEnv`,
+suggesting `todo()` was a way to mark "CI will fill this in". It
+isn't — `process.env` and `perEnv` are different layers, and
+setting an env var does NOT implicitly fill a perEnv slot.
+
+- **Moved `SENTRY_DSN` out of `perEnv` and into `envSchema`** in
+  `sample/settings.ts`. It's a CI-injected secret; the right place
+  is the env schema, where zod's required check enforces that CI
+  set it. `build()` now reads `env.SENTRY_DSN` directly.
+- **Replaced the `todo()` demo target** with a clearly committed
+  per-env value — `cdnDomain` — so `sample/config/prod.ts` still
+  demonstrates the `PER_ENV_TODO` failure path without mixing the
+  pattern up with secrets.
+- Sample `.env.<mode>.sample` files now list `SENTRY_DSN` in the
+  secrets section.
+
+### Added — "Which pattern for which value?" docs
+
+- New decision-table section in `docs/CONFIGURATION.md` covering:
+  - `envSchema` (CI-injected) → `ENV_VALIDATION_FAILED`
+  - `perEnv` (committed) → `PER_ENV_TODO`
+  - `overrideEnvKey` JSON (runtime override)
+- Explicit "⚠ `todo(...)` is not a way to require an env var" call-out.
+- `sample/README.md` rewritten with a two-pattern comparison table.
+- `AGENTS.md` gets the same disambiguation, plus a hint for the most
+  common user question ("I set the env var but `todo()` is still
+  throwing").
+
+### Changed — `PER_ENV_TODO` error hint
+
+The thrown error now includes guidance pointing users to either
+`envSchema` (for CI-injected values) or the JSON override layer
+(for ad-hoc operational overrides), instead of just saying "fill in
+perEnv".
+
+### Internal
+
+- No API changes. 118 tests still passing. Sample CLI smoke-tested.
+
 ## [0.7.0] — 2026-05-15
 
 ### Added — `todo(reason)` sentinel for unfilled config values

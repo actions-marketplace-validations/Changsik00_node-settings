@@ -212,6 +212,100 @@ finalConfig
 Settings → Object.freeze
 ```
 
+## Which pattern for which value?
+
+Three places a value can live, and they're filled in at three different
+times. **Picking the wrong place is the most common source of "but I
+set the env var, why doesn't it work?" confusion.**
+
+| Where it lives                  | Filled by                              | At                | Failure mode if missing                  |
+| ------------------------------- | -------------------------------------- | ----------------- | ---------------------------------------- |
+| **`envSchema`** field (zod)     | CI / infra / deploy platform / shell   | runtime (boot)    | `ENV_VALIDATION_FAILED` (zod)            |
+| **`perEnv`** map (in source)    | a developer editing source             | commit time       | `PER_ENV_TODO` (with `todo(...)`)        |
+| **`overrideEnvKey` JSON** (env) | deploy-time tooling, ad-hoc operator   | runtime (boot)    | nothing — override is optional by design |
+
+### Use `envSchema` for…
+
+- **CI-injected secrets** (`SENTRY_DSN`, `DB_PASSWORD`, `STRIPE_KEY`, …).
+  Anything the infra team / secret manager supplies.
+- **Per-deployment values** that vary even within the same `APP_ENV`
+  (think: pod IP, replica index).
+- Values you don't want committed to the repo.
+
+```ts
+envSchema: z.object({
+  SENTRY_DSN: z.string().describe("Sentry DSN @secret"),  // required at boot
+}),
+build: (env, config) => ({ sentryDsn: env.SENTRY_DSN }),
+```
+
+If CI forgets to set `SENTRY_DSN`, the loader throws
+`ENV_VALIDATION_FAILED` with the missing key.
+
+### Use `perEnv` for…
+
+- **Values that are static per environment** and committed to source
+  (bucket name, region, CDN domain, feature flag defaults).
+- Values that everyone reviewing the PR should see change.
+- Values that can be different for `local` / `dev` / `prod` without
+  needing to coordinate with infra.
+
+```ts
+perEnv: {
+  prod: { bucket: "prod-bucket" },
+}
+```
+
+If you scaffold a slot but don't fill it yet, use `todo(...)`:
+
+```ts
+perEnv: {
+  prod: { cdnDomain: todo("set prod CDN domain before deploy") },
+}
+```
+
+The loader throws `PER_ENV_TODO` for *that* env until you replace it.
+
+### Use `overrideEnvKey` JSON for…
+
+- One-off operational overrides without a code change
+  (`CONFIG_OVERRIDE_JSON='{"workerConcurrency":16}'`).
+- Per-deployment knobs the infra team controls separately from the
+  schema.
+
+### ⚠ `todo(...)` is *not* a way to require an env var
+
+A common mistake: putting `todo(...)` on a value you intend CI to
+inject. **That does not work.**
+
+```ts
+// ✗ WRONG — CI cannot fill this; loader always throws PER_ENV_TODO
+perEnv: {
+  prod: { sentryDsn: todo("CI will provide") },
+}
+```
+
+`process.env` and `perEnv` are *different layers* and the library does
+**not** silently copy env-var values into perEnv slots. To require a
+value from CI, put it in `envSchema`:
+
+```ts
+// ✓ RIGHT — CI sets process.env.SENTRY_DSN; zod enforces it
+envSchema: z.object({ SENTRY_DSN: z.string() }),
+build: (env, config) => ({ sentryDsn: env.SENTRY_DSN }),
+```
+
+The only way to fill a perEnv slot at runtime is the
+`overrideEnvKey` JSON layer:
+
+```ts
+overrideEnvKey: "CONFIG_OVERRIDE_JSON",
+// process.env.CONFIG_OVERRIDE_JSON='{"sentryDsn":"https://..."}'
+```
+
+…but for secrets, prefer `envSchema` — it's typed, narrower in
+scope, and integrates with the K8s Secret generator.
+
 ## Mark unfilled values with `todo(...)`
 
 When you scaffold a per-env file ahead of having the real values, mark

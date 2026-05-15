@@ -4,7 +4,7 @@ import type { AppConfig } from "./defaults.js";
 export const local: DeepPartial<AppConfig> = {
   bucket: "local-bucket",
   region: "local",
-  sentryDsn: "", // empty in local — Sentry disabled
+  cdnDomain: "localhost:3000",
   logLevel: "debug",
   rateLimits: { perUserRequestsPerMinute: 1000 }, // no throttling locally
 };

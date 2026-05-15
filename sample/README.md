@@ -36,32 +36,49 @@ sample/
   imports the config layers, and provides the `build()` function that
   produces the final settings object the app consumes.
 
-## Demonstrates `todo(...)` for unfilled values
+## Two failure modes, two timings
 
-`config/defaults.ts` uses `todo(...)` to declare two fields (`region`,
-`sentryDsn`) that *every* per-env branch must fill in. `local`, `dev`,
-and `stage` all provide real values. `prod` deliberately leaves
-`sentryDsn` as a `todo(...)` to show what happens when a value is
-forgotten:
+The sample illustrates two distinct ways "missing value" can be
+enforced — pick the one that matches *when* the value arrives:
 
-```bash
-# inspect — prints <TODO: "..."> in the layered config
-node-settings inspect --config sample/settings.ts --env=prod
-#   sentryDsn: <TODO: "provide prod Sentry DSN before first deploy">
+| Pattern             | Where it lives          | Filled by                       | Failure if missing            |
+| ------------------- | ----------------------- | ------------------------------- | ----------------------------- |
+| **env var**         | `envSchema` (settings.ts)| CI / infra at deploy            | `ENV_VALIDATION_FAILED` (zod) |
+| **perEnv hardcoded**| `config/<mode>.ts`       | a developer editing source      | `PER_ENV_TODO` (todo sentinel)|
 
-# check — fails with kind:'todo' error before deploy
-node-settings check --config sample/settings.ts
-#   ERR  [prod] sentryDsn: unfilled todo() at 'sentryDsn': ...
+In this sample:
 
-# loading the env at runtime — throws NodeSettingsError(PER_ENV_TODO)
-import settings from "./sample/settings.ts";
-settings({ APP_ENV: "prod", DB_HOST: "h", DB_PASSWORD: "p" });
-//   NodeSettingsError [PER_ENV_TODO]: unfilled todo() value(s) for APP_ENV=prod:
-//     - sentryDsn: provide prod Sentry DSN before first deploy
-```
+- **`SENTRY_DSN`** is in `envSchema` — it's a secret the CI/infra
+  team sets at deploy time (Vault, AWS Secrets Manager, GitHub
+  Actions secrets, etc.). If CI forgets to set it for an env that
+  requires it, zod's required check fails the boot.
+- **`cdnDomain`** is in `perEnv` — it's committed in source. Each
+  per-env file (`config/local.ts`, `config/dev.ts`, ...) supplies a
+  literal value. `config/prod.ts` deliberately leaves it as
+  `todo(...)` to demonstrate the failure path:
 
-This pattern catches forgotten configuration at **boot time** instead
-of as a silent prod incident.
+  ```bash
+  # inspect — prints <TODO: "..."> in the layered config
+  node-settings inspect --config sample/settings.ts --env=prod
+  #   cdnDomain: <TODO: "set the prod CDN domain before first deploy">
+
+  # check — fails with kind:'todo' error before deploy
+  node-settings check --config sample/settings.ts
+  #   ERR  [prod] cdnDomain: unfilled todo() at 'cdnDomain': ...
+
+  # loading the env at runtime — throws NodeSettingsError(PER_ENV_TODO)
+  import settings from "./sample/settings.ts";
+  settings({ APP_ENV: "prod", DB_HOST: "h", DB_PASSWORD: "p" });
+  //   NodeSettingsError [PER_ENV_TODO]: unfilled todo() value(s) for APP_ENV=prod:
+  //     - cdnDomain: set the prod CDN domain before first deploy
+  ```
+
+> **Don't put `todo(...)` on a value that arrives via CI/env.** `todo()`
+> is a commit-time placeholder. It will throw `PER_ENV_TODO` regardless
+> of what CI sets, because env-var injection does not implicitly fill
+> in perEnv slots. See
+> [`docs/CONFIGURATION.md` "Which pattern for which value?"](../docs/CONFIGURATION.md#which-pattern-for-which-value)
+> for the full table.
 
 ## Run the CLI against this sample
 

@@ -359,7 +359,10 @@ export function defineSettings<
         "PER_ENV_TODO",
         `unfilled todo() value(s) for ${resolved.envKey}=${envValue}:\n${list}`,
         {
-          hint: `Provide a value in perEnv['${envValue}'] (or defaults) for the listed paths.`,
+          hint:
+            `Provide a value in perEnv['${envValue}'] (or defaults) for the listed paths. ` +
+            `Note: setting process.env does NOT fill perEnv slots — if these values come from CI/infra at deploy time, ` +
+            `move them to envSchema (so zod enforces them as required env vars) or override via the JSON override env var.`,
         },
       );
     }

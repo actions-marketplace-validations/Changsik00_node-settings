@@ -106,6 +106,24 @@ inter-loader.
 A third "base" is the `.env.<mode>` file cascade (`loadDotenvCascade`)
 — but that layers *env var inputs*, not config values. Don't conflate.
 
+## Three places a value can live (frequently confused)
+
+| Layer                       | Filled by                        | When             | Failure if missing               |
+| --------------------------- | -------------------------------- | ---------------- | -------------------------------- |
+| `envSchema` field (zod)     | CI / infra / deploy platform     | runtime (boot)   | `ENV_VALIDATION_FAILED`          |
+| `perEnv` map (in source)    | developer editing source         | commit time      | `PER_ENV_TODO` (with `todo(...)`)|
+| `overrideEnvKey` JSON       | deploy-time tooling / operator   | runtime (boot)   | none (override is optional)      |
+
+**Critical rule.** `todo(...)` is *not* a way to require an env var.
+`process.env` does not implicitly fill `perEnv` slots. CI-injected
+secrets (`SENTRY_DSN`, `DB_PASSWORD`, ...) belong in `envSchema`. The
+`overrideEnvKey` JSON layer is the only runtime path that can fill a
+perEnv slot — and even then, secrets should prefer `envSchema`.
+
+When the user asks "I set the env var but `todo()` is still throwing",
+that's the symptom of using the wrong layer. See
+`docs/CONFIGURATION.md` "Which pattern for which value?".
+
 ## `todo(...)` sentinels for unfilled values
 
 ```ts
