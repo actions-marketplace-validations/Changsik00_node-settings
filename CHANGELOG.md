@@ -3,6 +3,68 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] — 2026-05-15
+
+### Added — platform presets
+
+Opt-in adapters that map well-known platform env vars to `APP_ENV`.
+Users compose them explicitly — no magic auto-detection.
+
+- **`presets.*`** factory namespace, exporting:
+  - `presets.vercel({ production?, preview?, development? })`
+  - `presets.netlify({ production?, 'deploy-preview'?, 'branch-deploy'?, dev? })`
+  - `presets.cloudflarePages({ productionBranch?, productionMode?, defaultMode? })`
+  - `presets.githubActions({ branchToMode?, default? })`
+  - `presets.railway({ production?, staging?, development? })`
+  - `presets.render({ production?, preview? })`
+  - `presets.nodeEnv({ production?, development?, test? })`
+- **`inferAppEnv({ source?, presets?, default?, envKey? })`** — runs
+  presets in priority order, returns the resolved mode.
+- **`inferAppEnvDetailed(...)`** — returns `{ value, source, presetName }`
+  for debugging "why does my app think it's local in production?" cases.
+- **`loadDotenvCascade({ appEnvPresets })`** — presets integrate into
+  the existing cascade. Resolution order: `source[APP_ENV]` → `.env`
+  file → presets → default.
+- **Build tools intentionally excluded.** No Vite / Turbo / Webpack
+  presets — those are build tools, not deployment platforms; they
+  don't expose a deployment-env signal. Documented in the deployment
+  guide.
+
+### Changed — sample reorganization
+
+Consolidated `examples/env-samples/` + `examples/multi-file/` into
+a single canonical example at `sample/`:
+
+```
+sample/
+├── settings.ts             # the canonical entry point
+├── env/                    # .env.<mode>.sample templates
+└── config/                 # split TS config layers
+```
+
+`sample/README.md` explains the layout, the wiring, and how to drop
+the templates into your own project. All doc references updated.
+
+### Changed — README slimmed; detailed docs moved to `docs/`
+
+The main README was getting long. Heavy content has moved to dedicated
+guides; the README is now badges + TL;DR + features + CLI + links.
+
+- **`docs/CONFIGURATION.md`** — the two "base" axes, file-layout
+  patterns (single / split / monorepo), `extends`, `mergePerEnv`, the
+  layering model, CLI walk-up.
+- **`docs/DEPLOYMENT.md`** — setting `APP_ENV` per platform (Docker,
+  K8s, GH Actions, Vercel, Heroku, ECS, Lambda, Render / Railway / Fly),
+  the new `presets.*` system, the `.env.<mode>` cascade.
+- **`docs/ERRORS.md`** — full `NodeSettingsError.code` reference.
+- **`AGENTS.md`** updated with the presets section and a "no Vite /
+  Turbo" note so AI assistants stop suggesting those.
+
+### Internal
+
+- 19 new tests covering presets + cascade integration. 106 tests
+  across 16 files. Typecheck + build clean.
+
 ## [0.5.0] — 2026-05-15
 
 ### Added — config organization guidance

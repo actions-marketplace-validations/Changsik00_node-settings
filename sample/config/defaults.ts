@@ -1,9 +1,8 @@
 /**
- * Baseline config — values that are correct for *every* environment
- * unless explicitly overridden in a per-env file.
+ * Baseline config — values that are correct for every environment
+ * unless overridden in a per-env file (./local.ts, ./dev.ts, ...).
  *
- * Keep this small: only put genuinely shared values here. Per-env files
- * (./local.ts, ./prod.ts, etc.) override anything that varies.
+ * Keep this small. Put genuinely shared values here only.
  */
 
 export interface AppConfig {
@@ -20,7 +19,7 @@ export interface AppConfig {
 }
 
 export const defaults: AppConfig = {
-  bucket: "", // every env must supply this
+  bucket: "", // every env supplies this
   workerConcurrency: 1,
   logLevel: "info",
   featureFlags: {

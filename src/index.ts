@@ -31,6 +31,21 @@ export {
 } from "./errors.js";
 
 export {
+  presets,
+  inferAppEnv,
+  inferAppEnvDetailed,
+  type AppEnvPreset,
+  type InferAppEnvOptions,
+  type InferAppEnvResult,
+  type VercelMapping,
+  type NetlifyMapping,
+  type GithubActionsOptions,
+  type CloudflarePagesOptions,
+  type RailwayMapping,
+  type NodeEnvMapping,
+} from "./presets.js";
+
+export {
   introspectEnvSchema,
   type EnvField,
   type IntrospectOptions,

@@ -1,22 +1,18 @@
 /**
- * Example: configuration split across multiple files.
+ * Sample settings — wires sample/env/ (input env vars) and
+ * sample/config/ (typed config layers) together.
  *
- * One settings.config.ts at the root assembles everything:
- *   - envSchema           — defines the env contract (zod)
- *   - defaults + perEnv   — imported from `./config/*.ts`
- *   - build               — maps env + layered config into the final
- *                           settings shape consumed by the app
+ * Run from the repo root:
  *
- * Use this layout when `perEnv` grows past 10–20 lines per branch,
- * when you want git-blame to point at one file per env, or when
- * different teams own different environments.
- *
- * Try the inspect command:
- *   node-settings inspect --config examples/multi-file/settings.config.ts
- *   node-settings inspect --config examples/multi-file/settings.config.ts --env=prod
+ *   node-settings inspect  --config sample/settings.ts
+ *   node-settings inspect  --config sample/settings.ts --env=prod
+ *   node-settings generate envs --config sample/settings.ts --out-dir /tmp/envs
+ *   node-settings generate docs --config sample/settings.ts --out /tmp/ENV.md
+ *   node-settings generate k8s  --config sample/settings.ts --name demo --out /tmp/k8s.yaml
+ *   node-settings check    --config sample/settings.ts
  */
 import { z } from "zod";
-import { defineSettings } from "../../src/index.js";
+import { defineSettings } from "../src/index.js";
 
 import { defaults, type AppConfig } from "./config/defaults.js";
 import { local } from "./config/local.js";

@@ -109,9 +109,9 @@ A third "base" is the `.env.<mode>` file cascade (`loadDotenvCascade`)
 ## File-layout patterns for config
 
 1. **Single file** — everything in `settings.config.ts`. Default.
-2. **Split** — `settings.config.ts` keeps the schema + `build()`,
+2. **Split** — `settings.ts` keeps the schema + `build()`,
    `config/{defaults,local,dev,prod}.ts` hold the per-env overrides.
-   See `examples/multi-file/`.
+   `env/` holds `.env.<mode>.sample` templates. See `sample/`.
 3. **Monorepo** — `packages/shared/settings.base.ts` exports a loader,
    each app does `defineSettings({ extends: [base], ... })`.
 
@@ -257,6 +257,35 @@ src/
 - **Comments explain *why*, not *what***. Public functions have JSDoc
   with at least one runnable `@example`.
 - **`peerDependencies: { zod }`** — never bundle zod, never pin it.
+
+## Platform presets (`inferAppEnv`, `presets.*`)
+
+Opt-in adapters that map well-known platform env vars to `APP_ENV`.
+Each preset is a factory; pass it to `inferAppEnv()` or to
+`loadDotenvCascade({ appEnvPresets: [...] })`.
+
+```ts
+import { inferAppEnv, presets } from "@changsik00/node-settings";
+const APP_ENV = inferAppEnv({
+  presets: [presets.vercel(), presets.githubActions({ branchToMode: { main: "prod" } })],
+});
+```
+
+Resolution order: `source[APP_ENV]` → `.env` file → presets → default.
+
+| Preset                       | Signal env vars                                  | Default mapping                                                       |
+| ---------------------------- | ------------------------------------------------ | --------------------------------------------------------------------- |
+| `presets.vercel()`           | `VERCEL_ENV`                                     | production→prod, preview→stage, development→local                     |
+| `presets.netlify()`          | `CONTEXT`                                        | production→prod, deploy-preview→stage, branch-deploy→dev, dev→local   |
+| `presets.cloudflarePages()`  | `CF_PAGES`, `CF_PAGES_BRANCH`                    | main→prod, others→dev                                                 |
+| `presets.githubActions()`    | `GITHUB_ACTIONS`, `GITHUB_REF_NAME`/`GITHUB_REF` | configurable per branch                                               |
+| `presets.railway()`          | `RAILWAY_ENVIRONMENT_NAME`                       | production→prod, staging→stage, development→local                     |
+| `presets.render()`           | `RENDER`, `IS_PULL_REQUEST`                      | normal→prod, PR→stage                                                 |
+| `presets.nodeEnv()`          | `NODE_ENV`                                       | production→prod, development→local, test→test                         |
+
+**No Vite/Turbo presets** — those are build tools, not deployment
+platforms; they don't expose a deployment-env signal. Users behind
+Vite or Turbo set `APP_ENV` from the actual deploy host or shell.
 
 ## The `.env.<mode>` cascade (`loadDotenvCascade`)
 

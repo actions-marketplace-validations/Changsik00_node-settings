@@ -1,4 +1,4 @@
-import type { DeepPartial } from "../../../src/utils/deep-merge.js";
+import type { DeepPartial } from "../../src/utils/deep-merge.js";
 import type { AppConfig } from "./defaults.js";
 
 export const local: DeepPartial<AppConfig> = {

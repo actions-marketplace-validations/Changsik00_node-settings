@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseDotenv } from "./dotenv-file.js";
+import type { AppEnvPreset } from "../presets.js";
 
 export interface LoadDotenvCascadeOptions {
   /** Directory the cascade reads from. Default: `process.cwd()`. */
@@ -27,6 +28,18 @@ export interface LoadDotenvCascadeOptions {
    * Default: `process.env`.
    */
   source?: Record<string, string | undefined>;
+  /**
+   * Opt-in platform presets consulted when neither `source[appEnvKey]`
+   * nor the base `.env` file supply a value. See `presets.*` in the
+   * package root (e.g. `presets.vercel()`, `presets.netlify()`).
+   *
+   * Resolution order for `mode`:
+   *   1. `source[appEnvKey]` (explicit override)
+   *   2. `.env`'s value
+   *   3. each preset's `detect(source)`, in array order
+   *   4. `defaultMode`
+   */
+  appEnvPresets?: readonly AppEnvPreset[];
 }
 
 export interface DotenvCascadeResult {
@@ -92,8 +105,18 @@ export function loadDotenvCascade(
     skipped.push(basePath);
   }
 
-  // 2. Determine mode: source wins over base file, base file wins over default.
-  const mode = source[appEnvKey] ?? baseParsed[appEnvKey] ?? defaultMode;
+  // 2. Determine mode. Priority: source -> .env file -> presets -> default.
+  let mode = source[appEnvKey] ?? baseParsed[appEnvKey];
+  if (!mode && options.appEnvPresets) {
+    for (const preset of options.appEnvPresets) {
+      const detected = preset.detect(source);
+      if (typeof detected === "string" && detected.length > 0) {
+        mode = detected;
+        break;
+      }
+    }
+  }
+  if (!mode) mode = defaultMode;
   const skipLocal = skipLocalFor.includes(mode);
 
   // 3. Remaining cascade. `load: false` entries are still reported in

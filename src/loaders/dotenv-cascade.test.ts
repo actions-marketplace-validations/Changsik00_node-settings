@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadDotenvCascade } from "./dotenv-cascade.js";
+import { presets } from "../presets.js";
 
 describe("loadDotenvCascade", () => {
   let cwd: string;
@@ -97,6 +98,27 @@ describe("loadDotenvCascade", () => {
     expect(result.mode).toBe("local");
     expect(result.loaded).toHaveLength(0);
     expect(result.env.APP_ENV).toBe("local"); // synthesised
+  });
+
+  it("consults appEnvPresets when source and .env don't supply mode", () => {
+    writeFileSync(join(cwd, ".env.prod"), "PROD_ONLY=1");
+    const result = loadDotenvCascade({
+      cwd,
+      source: { VERCEL_ENV: "production" },
+      appEnvPresets: [presets.vercel()],
+    });
+    expect(result.mode).toBe("prod");
+    expect(result.env.PROD_ONLY).toBe("1");
+  });
+
+  it(".env file value beats presets", () => {
+    writeFileSync(join(cwd, ".env"), "APP_ENV=local");
+    const result = loadDotenvCascade({
+      cwd,
+      source: { VERCEL_ENV: "production" },
+      appEnvPresets: [presets.vercel()],
+    });
+    expect(result.mode).toBe("local");
   });
 
   it("uses custom appEnvKey", () => {
