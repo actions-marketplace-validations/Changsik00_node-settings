@@ -19,6 +19,10 @@ export {
   defineSettings,
   type DefineSettingsOptions,
   type SettingsLoader,
+  type AnySettingsLoader,
+  type ResolvedSettings,
+  type MergedEnv,
+  type MergedConfig,
 } from "./define-settings.js";
 
 export {
@@ -32,6 +36,7 @@ export { loadNodeEnv, loadViteEnv } from "./loaders/index.js";
 export { loadDotenvFile, parseDotenv } from "./loaders/dotenv-file.js";
 
 export { deepMerge, type DeepPartial } from "./utils/deep-merge.js";
+export { mergePerEnv } from "./utils/merge-per-env.js";
 
 export {
   checkPerEnvCompleteness,

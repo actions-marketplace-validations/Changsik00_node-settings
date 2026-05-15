@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import type { SettingsLoader } from "./define-settings.js";
-import { deepMerge } from "./utils/deep-merge.js";
+import { deepMerge, type DeepPartial } from "./utils/deep-merge.js";
 
 export interface PerEnvIssue {
   /** Which `perEnv` branch the issue belongs to (e.g. `"prod"`). */
@@ -89,8 +89,8 @@ export function checkPerEnvCompleteness<
   loader: SettingsLoader<TSchema, TConfig, TSettings>,
   options: CheckPerEnvOptions = {},
 ): PerEnvCompletenessReport {
-  const { opts } = loader;
-  const allEnvs = Object.keys(opts.perEnv);
+  const { resolved } = loader;
+  const allEnvs = Object.keys(resolved.perEnv);
   const targetEnvs = options.envs ?? allEnvs;
 
   const placeholders =
@@ -106,7 +106,7 @@ export function checkPerEnvCompleteness<
   const issues: PerEnvIssue[] = [];
 
   for (const env of targetEnvs) {
-    const branch = opts.perEnv[env];
+    const branch = resolved.perEnv[env];
     if (!branch) {
       issues.push({
         env,
@@ -118,7 +118,10 @@ export function checkPerEnvCompleteness<
       continue;
     }
 
-    const layered = deepMerge(opts.defaults, branch);
+    const layered = deepMerge(
+      resolved.defaults as Record<string, unknown>,
+      branch as DeepPartial<Record<string, unknown>>,
+    );
     scanConfig(layered, "", env, placeholders, flagEmptyStrings, issues);
 
     const runtimeEnv = options.envValues?.[env] ?? {};

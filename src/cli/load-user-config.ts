@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { resolve, isAbsolute } from "node:path";
+import { resolve, isAbsolute, dirname } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createJiti } from "jiti";
 import type { z } from "zod";
@@ -18,6 +18,21 @@ const CANDIDATE_FILES = [
   "settings.config.cjs",
 ];
 
+/**
+ * Filesystem markers that bound the upward search for a config file.
+ * The search stops if any of these is found in a directory *without*
+ * also finding a config — the directory is the repo/workspace root and
+ * going further would leak outside the project.
+ */
+const STOP_MARKERS = [
+  ".git",
+  "pnpm-workspace.yaml",
+  "lerna.json",
+  "turbo.json",
+  "nx.json",
+  "rush.json",
+];
+
 export interface LoadedUserConfig {
   /** Absolute path of the loaded config file. */
   path: string;
@@ -30,13 +45,17 @@ export interface LoadedUserConfig {
 }
 
 /**
- * Resolve and load the user's settings loader. Two strategies, tried in
- * order:
+ * Resolve and load the user's settings loader. Three strategies, tried
+ * in order:
  *
  *   1. `--config <path>` (or the `path` argument here) — load that file
  *      directly.
- *   2. Auto-discover `node-settings.config.{ts,mts,js,mjs,cjs}` /
- *      `settings.config.{...}` in the current working directory.
+ *   2. Auto-discover one of {@link CANDIDATE_FILES} in `cwd`.
+ *   3. Walk up the directory tree, checking each parent for the same
+ *      candidate files, stopping at a workspace/repo marker (`.git`,
+ *      `pnpm-workspace.yaml`, `turbo.json`, etc.) or the filesystem
+ *      root. This matches the behavior of `tsc`, `eslint`, and other
+ *      cosmiconfig-based tools.
  *
  * The loaded module must expose either a default export or a `settings`
  * named export that is a {@link SettingsLoader} (i.e. the return value
@@ -44,17 +63,19 @@ export interface LoadedUserConfig {
  */
 export async function loadUserConfig(
   explicitPath?: string,
+  cwd: string = process.cwd(),
 ): Promise<LoadedUserConfig> {
   const resolved = explicitPath
-    ? resolve(process.cwd(), explicitPath)
-    : autoDiscover(process.cwd());
+    ? resolve(cwd, explicitPath)
+    : findConfigUpwards(cwd);
 
   if (!resolved) {
     throw new Error(
       [
         "[node-settings] no config file found.",
-        "Pass --config <path>, or create one of:",
+        `Searched upward from ${cwd} for one of:`,
         ...CANDIDATE_FILES.map((f) => `  - ${f}`),
+        "Pass --config <path> to point at one explicitly.",
       ].join("\n"),
     );
   }
@@ -75,10 +96,33 @@ export async function loadUserConfig(
   return { path: resolved, loader: candidate };
 }
 
-function autoDiscover(cwd: string): string | undefined {
-  for (const candidate of CANDIDATE_FILES) {
-    const full = resolve(cwd, candidate);
-    if (existsSync(full)) return full;
+/**
+ * Walk from `start` toward the filesystem root, returning the first
+ * candidate config file found. Halts when a STOP_MARKER appears in the
+ * current directory without a matching config — the marker signals a
+ * workspace/repo boundary.
+ *
+ * Exported for testing.
+ */
+export function findConfigUpwards(start: string): string | undefined {
+  let dir = resolve(start);
+  // Track visited dirs to guard against pathological symlink loops.
+  const visited = new Set<string>();
+  while (!visited.has(dir)) {
+    visited.add(dir);
+
+    for (const candidate of CANDIDATE_FILES) {
+      const full = resolve(dir, candidate);
+      if (existsSync(full)) return full;
+    }
+
+    if (STOP_MARKERS.some((m) => existsSync(resolve(dir, m)))) {
+      return undefined;
+    }
+
+    const parent = dirname(dir);
+    if (parent === dir) return undefined; // filesystem root
+    dir = parent;
   }
   return undefined;
 }
@@ -100,5 +144,6 @@ function isSettingsLoader(value: unknown): value is LoadedUserConfig["loader"] {
   if (typeof value !== "function") return false;
   const opts = (value as { opts?: unknown }).opts;
   const envFields = (value as { envFields?: unknown }).envFields;
-  return Boolean(opts) && Array.isArray(envFields);
+  const resolvedView = (value as { resolved?: unknown }).resolved;
+  return Boolean(opts) && Array.isArray(envFields) && Boolean(resolvedView);
 }

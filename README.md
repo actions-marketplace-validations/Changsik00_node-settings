@@ -31,6 +31,7 @@ Most env libraries stop at runtime validation. `node-settings` covers the
 | ----------------------------------------------------- | :----: | :--------: | :-----: | :-----------: |
 | zod-based env validation                              |        |     ✅     |         |       ✅       |
 | Layered config (defaults → per-env → JSON override)   |        |            |   ✅    |       ✅       |
+| Monorepo `extends` for shared base configs            |        |     ✅     |         |       ✅       |
 | Generates `.env.example` from the schema              |        |            |         |       ✅       |
 | Generates Markdown docs for infra teams               |        |            |         |       ✅       |
 | Generates Kubernetes ConfigMap + Secret YAML          |        |            |         |       ✅       |
@@ -212,6 +213,124 @@ const docs = generateMarkdownDocs(settings.envFields, { title: "My Service" });
 const { configMap, secret } = generateK8sManifests(settings.envFields, {
   name: "my-app",
   namespace: "prod",
+});
+```
+
+## Monorepo support
+
+`node-settings` follows the patterns that the rest of the Node ecosystem
+already uses, so it should feel familiar in a Turborepo / Nx / pnpm-workspace
+setup.
+
+### `extends` — share a base across packages
+
+Modeled after [`@t3-oss/env-core`](https://github.com/t3-oss/t3-env)'s
+`extends` field. Pass an array of parent loaders and their `envSchema`,
+`defaults`, and `perEnv` get merged in before the child's:
+
+```ts
+// packages/shared/settings.base.ts
+import { z } from "zod";
+import { defineSettings } from "@changsik00/node-settings";
+
+export const base = defineSettings({
+  envSchema: z.object({
+    APP_ENV: z.enum(["local", "dev", "prod"]).default("local"),
+    DB_HOST: z.string(),
+    DB_PASSWORD: z.string(),
+  }),
+  envKey: "APP_ENV",
+  defaults: { region: "us-east-1", logLevel: "info" },
+  perEnv: {
+    local: { logLevel: "debug" },
+    dev: {},
+    prod: {},
+  },
+  build: (env, config) => ({
+    dbHost: env.DB_HOST,
+    region: config.region,
+    logLevel: config.logLevel,
+  }),
+});
+```
+
+```ts
+// packages/content-api/node-settings.config.ts
+import { z } from "zod";
+import { defineSettings } from "@changsik00/node-settings";
+import { base } from "../shared/settings.base.js";
+
+export default defineSettings({
+  extends: [base],                                        // ← inherit
+  envSchema: z.object({ CONTENT_BUCKET: z.string() }),    // child-only
+  envKey: "APP_ENV",
+  defaults: { bucket: "" },
+  perEnv: {
+    local: { bucket: "local-content" },
+    dev:   { bucket: "dev-content" },
+    prod:  { bucket: "prod-content" },
+  },
+  build: (env, config) => ({
+    contentBucket: env.CONTENT_BUCKET, // child env var
+    dbHost: env.DB_HOST,               // inherited from base
+    bucket: config.bucket,             // child config
+    region: config.region,             // inherited from base
+  }),
+});
+```
+
+Merge rules:
+
+| Field            | Behavior                                                              |
+| ---------------- | --------------------------------------------------------------------- |
+| `envSchema`      | `parent.merge(child)` via zod's built-in object merge (child wins).   |
+| `defaults`       | `deepMerge(parent, child)` (child wins, nested objects merged).       |
+| `perEnv`         | Per env key, `deepMerge(parent, child)`.                              |
+| `envKey`         | Child wins.                                                           |
+| `overrideEnvKey` | Child wins; if omitted, inherited from the last parent that sets one. |
+| `build`          | Child's only — but `env` / `config` parameters have the merged shape. |
+
+Multiple parents are supported (merged in array order, later wins):
+
+```ts
+defineSettings({ extends: [base, logging, metrics], /* ... */ });
+```
+
+### CLI walk-up auto-discovery
+
+When you run the CLI from a package subdirectory, it walks up the
+directory tree to find a `node-settings.config.*` (or `settings.config.*`)
+in any ancestor — the same behavior `tsc`, `eslint`, and other
+cosmiconfig-driven tools have.
+
+```
+my-monorepo/
+├── .git/                              ← walk stops here
+├── pnpm-workspace.yaml
+├── node-settings.config.ts            ← (optional) root config
+└── packages/
+    └── content-api/
+        ├── node-settings.config.ts    ← found first if present
+        └── src/
+```
+
+Stop markers: `.git`, `pnpm-workspace.yaml`, `lerna.json`, `turbo.json`,
+`nx.json`, `rush.json`. If none of these is found and no config exists,
+the walk continues to the filesystem root.
+
+### `mergePerEnv` — programmatic composition helper
+
+If you need to compose `perEnv` outside of `defineSettings` (e.g. when
+parts of it come from environment-specific files), use the standalone
+helper:
+
+```ts
+import { mergePerEnv } from "@changsik00/node-settings";
+import { basePerEnv } from "../shared/settings.base.js";
+
+const perEnv = mergePerEnv(basePerEnv, {
+  local: { bucket: "local-content" },
+  prod:  { bucket: "prod-content" },
 });
 ```
 
