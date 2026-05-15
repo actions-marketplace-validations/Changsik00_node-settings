@@ -36,6 +36,33 @@ sample/
   imports the config layers, and provides the `build()` function that
   produces the final settings object the app consumes.
 
+## Demonstrates `todo(...)` for unfilled values
+
+`config/defaults.ts` uses `todo(...)` to declare two fields (`region`,
+`sentryDsn`) that *every* per-env branch must fill in. `local`, `dev`,
+and `stage` all provide real values. `prod` deliberately leaves
+`sentryDsn` as a `todo(...)` to show what happens when a value is
+forgotten:
+
+```bash
+# inspect — prints <TODO: "..."> in the layered config
+node-settings inspect --config sample/settings.ts --env=prod
+#   sentryDsn: <TODO: "provide prod Sentry DSN before first deploy">
+
+# check — fails with kind:'todo' error before deploy
+node-settings check --config sample/settings.ts
+#   ERR  [prod] sentryDsn: unfilled todo() at 'sentryDsn': ...
+
+# loading the env at runtime — throws NodeSettingsError(PER_ENV_TODO)
+import settings from "./sample/settings.ts";
+settings({ APP_ENV: "prod", DB_HOST: "h", DB_PASSWORD: "p" });
+//   NodeSettingsError [PER_ENV_TODO]: unfilled todo() value(s) for APP_ENV=prod:
+//     - sentryDsn: provide prod Sentry DSN before first deploy
+```
+
+This pattern catches forgotten configuration at **boot time** instead
+of as a silent prod incident.
+
 ## Run the CLI against this sample
 
 From the repo root:

@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import type { SettingsLoader } from "./define-settings.js";
 import { deepMerge, type DeepPartial } from "./utils/deep-merge.js";
+import { isTodo } from "./todo.js";
 
 export interface PerEnvIssue {
   /** Which `perEnv` branch the issue belongs to (e.g. `"prod"`). */
@@ -16,7 +17,8 @@ export interface PerEnvIssue {
     | "placeholder"
     | "empty-string"
     | "missing-required-env"
-    | "missing-branch";
+    | "missing-branch"
+    | "todo";
 }
 
 export interface CheckPerEnvOptions {
@@ -165,6 +167,16 @@ function scanConfig(
   flagEmptyStrings: boolean,
   issues: PerEnvIssue[],
 ): void {
+  if (isTodo(value)) {
+    issues.push({
+      env,
+      path: path || "(root)",
+      severity: "error",
+      kind: "todo",
+      message: `unfilled todo() at '${path || "(root)"}': ${value.reason}`,
+    });
+    return;
+  }
   if (typeof value === "string") {
     if (placeholders.some((p) => p.test(value))) {
       issues.push({

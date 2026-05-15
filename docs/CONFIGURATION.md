@@ -212,6 +212,54 @@ finalConfig
 Settings → Object.freeze
 ```
 
+## Mark unfilled values with `todo(...)`
+
+When you scaffold a per-env file ahead of having the real values, mark
+the placeholders with `todo(reason)`. The loader scans the final
+config before calling `build()` and throws if any sentinel survives.
+
+```ts
+import { defineSettings, todo } from "@changsik00/node-settings";
+
+defineSettings({
+  envSchema,
+  envKey: "APP_ENV",
+  defaults: {
+    bucket: "",
+    sentryDsn: todo("each per-env branch must set its Sentry DSN"),
+  },
+  perEnv: {
+    local: { bucket: "local-b", sentryDsn: "" }, // disabled locally
+    dev:   { bucket: "dev-b",   sentryDsn: "https://...@sentry.io/..." },
+    prod:  { bucket: "prod-b",  sentryDsn: todo("set before first deploy") },
+  },
+  build: (env, config) => ({ ... }),
+});
+```
+
+Behavior:
+
+- **Type-safe at compile time.** `todo()` returns `never`, which is
+  assignable to any field. Your `DeepPartial<AppConfig>` types stay
+  honest.
+- **Opaque to deepMerge.** A child branch's real value cleanly
+  replaces a parent's sentinel. A child sentinel does *not* corrupt
+  the parent's value.
+- **Loud at boot.** Loading an env that still has sentinels throws
+  `NodeSettingsError` with code `PER_ENV_TODO`, listing every unfilled
+  path and its reason.
+- **CI gate.** `node-settings check` reports every sentinel across
+  every perEnv branch as a `kind: "todo"` error, so you catch them
+  before deploy.
+- **Clear in `inspect`.** `node-settings inspect --env=prod` prints
+  sentinels as `<TODO: "...">` rather than dumping the marker object.
+
+Use `todo()` in `defaults` to declare a field that *every* per-env
+branch must fill in. Use it in a specific per-env branch to flag
+"this env exists but isn't ready yet".
+
+See [`sample/`](../sample) for a worked example.
+
 ## See what your config resolves to
 
 When in doubt, dry-run it with the CLI:

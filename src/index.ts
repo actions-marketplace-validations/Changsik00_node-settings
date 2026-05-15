@@ -31,6 +31,14 @@ export {
 } from "./errors.js";
 
 export {
+  todo,
+  isTodo,
+  findTodos,
+  TODO_SYMBOL,
+  type TodoSentinel,
+} from "./todo.js";
+
+export {
   presets,
   inferAppEnv,
   inferAppEnvDetailed,

@@ -2,6 +2,7 @@ import type { ParsedArgs } from "./args.js";
 import { flagString } from "./args.js";
 import { loadUserConfig } from "./load-user-config.js";
 import { deepMerge } from "../utils/deep-merge.js";
+import { isTodo } from "../todo.js";
 import type { EnvField } from "../introspect.js";
 
 /**
@@ -65,11 +66,19 @@ function formatEnvField(field: EnvField): string {
 }
 
 function printConfig(value: unknown, indent: string): void {
+  if (isTodo(value)) {
+    console.log(`${indent}<TODO: ${JSON.stringify(value.reason)}>`);
+    return;
+  }
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     console.log(`${indent}${JSON.stringify(value)}`);
     return;
   }
   for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    if (isTodo(child)) {
+      console.log(`${indent}${key}: <TODO: ${JSON.stringify(child.reason)}>`);
+      continue;
+    }
     if (
       child !== null &&
       typeof child === "object" &&

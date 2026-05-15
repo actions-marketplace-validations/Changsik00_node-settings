@@ -1,3 +1,5 @@
+import { TODO_SYMBOL } from "../todo.js";
+
 /**
  * A small deepMerge helper used for config layering
  * (defaults -> per-env overrides -> JSON overrides).
@@ -43,6 +45,9 @@ export function deepMerge<T extends object>(
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (value === null || typeof value !== "object") return false;
+  // Sentinels (e.g. `todo(...)` markers) must be replaced wholesale,
+  // not merged into. Recursing inside them would corrupt the marker.
+  if (TODO_SYMBOL in (value as object)) return false;
   const proto = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;
 }

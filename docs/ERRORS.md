@@ -52,6 +52,7 @@ the schema, or when the runtime mode is unknown.
 | Code                       | When                                                          |
 | -------------------------- | ------------------------------------------------------------- |
 | `PER_ENV_BRANCH_MISSING`   | Runtime: no `perEnv` branch matches the parsed `envKey` value.|
+| `PER_ENV_TODO`             | Loaded branch still contains unfilled `todo(...)` sentinels.  |
 | `OVERRIDE_JSON_PARSE`      | `overrideEnvKey` env var is not valid JSON.                   |
 | `ENV_VALIDATION_FAILED`    | Zod env validation failed at runtime.                         |
 

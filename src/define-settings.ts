@@ -8,6 +8,7 @@ import {
 } from "./introspect.js";
 import { NodeSettingsError } from "./errors.js";
 import { validateDefineSettingsOptions } from "./validate-options.js";
+import { findTodos } from "./todo.js";
 
 /**
  * A {@link SettingsLoader} whose generics are erased to broad bounds,
@@ -342,6 +343,24 @@ export function defineSettings<
       opts.onOverride(
         overrides as DeepPartial<NoInfer<MergedConfig<TExtends, TConfig>>>,
         envValue,
+      );
+    }
+
+    // Catch unfilled todo() sentinels before they reach build().
+    // We only check the branch that's actually being loaded — sentinels
+    // in OTHER perEnv branches are intentional placeholders that the
+    // `node-settings check` CLI is responsible for surfacing.
+    const todos = findTodos(finalConfig);
+    if (todos.length > 0) {
+      const list = todos
+        .map((t) => `  - ${t.path}: ${t.reason}`)
+        .join("\n");
+      throw new NodeSettingsError(
+        "PER_ENV_TODO",
+        `unfilled todo() value(s) for ${resolved.envKey}=${envValue}:\n${list}`,
+        {
+          hint: `Provide a value in perEnv['${envValue}'] (or defaults) for the listed paths.`,
+        },
       );
     }
 

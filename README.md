@@ -77,6 +77,9 @@ see [`sample/`](./sample).
 - **Defensive at definition time.** Typo'd `perEnv` key, wrong
   `envKey`, missing override key — all caught when the loader is
   *defined*, not on the first request.
+- **`todo(reason)` markers.** Mark unfilled config slots with a
+  type-safe sentinel; the loader fails loudly with `PER_ENV_TODO`
+  when an env tries to load with one still in place.
 - **Stable error API.** `NodeSettingsError.code` you can switch on.
 - **ESM, Node ≥ 18.** Only `jiti` (TS config loading) at runtime;
   `zod` is a peer dep.

@@ -18,6 +18,8 @@ export type NodeSettingsErrorCode =
   | "PER_ENV_EMPTY"
   /** At runtime, the resolved `envKey` value has no matching `perEnv` branch. */
   | "PER_ENV_BRANCH_MISSING"
+  /** The loaded perEnv branch still contains unfilled `todo(...)` sentinels. */
+  | "PER_ENV_TODO"
   /** An item in `extends` is not a `defineSettings(...)` loader. */
   | "INVALID_EXTENDS_ITEM"
   /** The `overrideEnvKey` env var is not parseable JSON. */

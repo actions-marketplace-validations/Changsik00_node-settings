@@ -41,6 +41,8 @@ const settings = defineSettings({
     dbPassword: env.DB_PASSWORD,
     redisUrl: env.REDIS_URL,
     bucket: config.bucket,
+    region: config.region,
+    sentryDsn: config.sentryDsn,
     workerConcurrency: config.workerConcurrency,
     logLevel: config.logLevel,
     featureFlags: config.featureFlags,

@@ -106,6 +106,32 @@ inter-loader.
 A third "base" is the `.env.<mode>` file cascade (`loadDotenvCascade`)
 — but that layers *env var inputs*, not config values. Don't conflate.
 
+## `todo(...)` sentinels for unfilled values
+
+```ts
+import { defineSettings, todo } from "@changsik00/node-settings";
+
+defineSettings({
+  // ...
+  defaults: { sentryDsn: todo("each env must provide a Sentry DSN") },
+  perEnv: {
+    local: { sentryDsn: "" },
+    prod:  { sentryDsn: todo("set before first deploy") },
+  },
+});
+```
+
+- `todo()` returns `never` (assignable to any field type) and at
+  runtime an object marked with `Symbol.for("@changsik00/node-settings:todo")`.
+- `deepMerge` treats sentinels as opaque — child values cleanly
+  replace parent sentinels; sentinels don't corrupt other values.
+- Loader scans the resolved config before `build()`; if any sentinel
+  remains for the env being loaded, throws `PER_ENV_TODO` listing
+  every unfilled path.
+- `checkPerEnvCompleteness` reports each sentinel as a `kind: "todo"`
+  error.
+- `inspect` CLI prints sentinels as `<TODO: "reason">`.
+
 ## File-layout patterns for config
 
 1. **Single file** — everything in `settings.config.ts`. Default.
@@ -201,6 +227,7 @@ stable `code` plus an optional `hint`. Match on `code`, not `message`.
 | `PER_ENV_EMPTY`            | `perEnv` has no branches at all.                             |
 | `PER_ENV_KEY_NOT_IN_ENUM`  | `perEnv` branch is not a value of the `envKey` enum (typo).  |
 | `PER_ENV_BRANCH_MISSING`   | Runtime: no `perEnv` branch matches the parsed envKey value. |
+| `PER_ENV_TODO`             | Loaded branch still has unfilled `todo(...)` sentinels.      |
 | `INVALID_EXTENDS_ITEM`     | `extends[i]` is not a `defineSettings(...)` return value.    |
 | `OVERRIDE_JSON_PARSE`      | `overrideEnvKey` env var is not valid JSON.                  |
 | `ENV_VALIDATION_FAILED`    | Zod env validation failed at runtime.                        |

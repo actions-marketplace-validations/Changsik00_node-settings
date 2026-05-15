@@ -3,6 +3,53 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] — 2026-05-15
+
+### Added — `todo(reason)` sentinel for unfilled config values
+
+Type-safe replacement for the old "match `TODO-…` strings via regex"
+approach. Declares "this slot must be filled in before the env that
+contains it can be loaded" in a way the loader, the deep-merge, the
+`check` CLI, and the `inspect` CLI all understand.
+
+- **`todo(reason?: string): never`** — exported from the package
+  root. Returns `never` so the result is assignable to any field
+  type; at runtime returns a sentinel object marked with
+  `Symbol.for("@changsik00/node-settings:todo")`.
+- **`isTodo(value): value is TodoSentinel`** and
+  **`findTodos(value): { path, reason }[]`** helpers.
+- **`deepMerge` skips sentinels.** A sentinel is opaque — child
+  branches that supply a real value cleanly replace it; nested
+  merging never descends into a sentinel.
+- **Loader integration.** After the deep-merge but before calling
+  `build()`, the loader scans the resolved config and throws
+  `NodeSettingsError` with the new code `PER_ENV_TODO` if any
+  sentinel survives, listing every unfilled path and its reason.
+- **`check` CLI integration.** Reports each sentinel as a
+  `kind: "todo"` error across every perEnv branch — catches "I
+  scaffolded prod but forgot to fill it in" at CI time.
+- **`inspect` CLI integration.** Prints sentinels as `<TODO: "...">`
+  instead of dumping the marker object.
+
+### Changed — sample/ demonstrates the pattern
+
+- `sample/config/defaults.ts` declares `region` and `sentryDsn` as
+  `todo(...)` — every per-env branch must supply a real value.
+- `sample/config/{local,dev,stage}.ts` all fill them in.
+- `sample/config/prod.ts` deliberately leaves `sentryDsn` as
+  `todo(...)` to demonstrate the loud failure path:
+  - `inspect --env=prod` prints `sentryDsn: <TODO: "...">`
+  - `check` reports `kind:'todo'` error for prod
+  - loading APP_ENV=prod throws `PER_ENV_TODO`
+- `sample/README.md` walks through this end-to-end.
+
+### Internal
+
+- 12 new tests covering the sentinel, deepMerge interaction, loader
+  throw, multi-path error reporting, `check` integration, and JSON
+  override filling in a sentinel. 118 tests across 17 files,
+  typecheck + build clean.
+
 ## [0.6.0] — 2026-05-15
 
 ### Added — platform presets
