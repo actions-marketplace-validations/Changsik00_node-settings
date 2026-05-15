@@ -53,6 +53,7 @@ Subcommands:
 | --------------------------------------- | -------------------------------------- |
 | `node-settings validate [env-file]`     | Run the schema against env (CI gate).      |
 | `node-settings check [--env name]`      | Per-env placeholder / required check.      |
+| `node-settings inspect [--env name]`    | Dry-run: show schema + layered config.     |
 | `node-settings generate env-example`    | Write a single `.env.example`.             |
 | `node-settings generate envs --out-dir` | One `.env.<branch>.example` per perEnv.    |
 | `node-settings generate docs`           | Write Markdown env documentation.          |
@@ -89,6 +90,30 @@ tooling properties:
 - `loader.resolved` — `{ envSchema, defaults, perEnv, envKey,
   overrideEnvKey }` after all `extends` layers have been merged in.
   Used by `checkPerEnvCompleteness` and the CLI.
+
+## The two "base" axes (often confused)
+
+`defineSettings` has two distinct kinds of base:
+
+| Axis             | "Base" means                                | Override mechanism                          |
+| ---------------- | ------------------------------------------- | ------------------------------------------- |
+| **Env axis**     | `defaults` — shared across every env        | `perEnv[mode]` (deepMerged on top)          |
+| **Package axis** | `extends: [baseLoader]` — another loader    | Child's own `envSchema` / `defaults` / `perEnv` |
+
+Both can be used together. `defaults` is intra-loader; `extends` is
+inter-loader.
+
+A third "base" is the `.env.<mode>` file cascade (`loadDotenvCascade`)
+— but that layers *env var inputs*, not config values. Don't conflate.
+
+## File-layout patterns for config
+
+1. **Single file** — everything in `settings.config.ts`. Default.
+2. **Split** — `settings.config.ts` keeps the schema + `build()`,
+   `config/{defaults,local,dev,prod}.ts` hold the per-env overrides.
+   See `examples/multi-file/`.
+3. **Monorepo** — `packages/shared/settings.base.ts` exports a loader,
+   each app does `defineSettings({ extends: [base], ... })`.
 
 ## Common patterns
 

@@ -7,6 +7,8 @@ COMMANDS
   validate [env-file]    Validate the env (or a .env file) against the schema.
   check                  Scan every per-env branch for placeholders and
                          missing required envs. Exits non-zero on errors.
+  inspect [--env <name>] Show the env schema + layered config for each
+                         perEnv branch (dry-run, no secrets required).
   generate <target>      Generate artifacts from the schema.
                          Targets: env-example | envs | docs | k8s
 
@@ -23,6 +25,11 @@ check
                       [--allow-warnings | --no-allow-warnings]
     Reports placeholder values, empty required strings, and missing
     required env vars per branch.
+
+inspect
+  node-settings inspect [--env <a,b,c>] [--config <path>]
+    Prints the env schema and the layered config (defaults + perEnv[mode])
+    for each branch. Does not call the loader — no env values required.
 
 generate env-example   [--out <path>]
 generate envs          --out-dir <dir>

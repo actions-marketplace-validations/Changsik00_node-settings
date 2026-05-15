@@ -3,6 +3,41 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] — 2026-05-15
+
+### Added — config organization guidance
+
+The package previously documented how to layer *env vars* (defaults
+vs perEnv, plus the `.env.<mode>` cascade) but said nothing about how
+to *organise the config itself* — and there were two unrelated "base"
+concepts (`defaults` and `extends`) that looked the same from a
+distance. This release addresses both.
+
+- **`inspect [--env <name>]` CLI subcommand**. Dry-run inspection
+  that prints the env schema *contract* plus the layered config
+  (`defaults` deep-merged with `perEnv[mode]`) for each branch.
+  Doesn't call your `build()` so no env values / secrets are needed.
+  Answers "what does my prod config actually look like?" without
+  prod credentials.
+- **`examples/multi-file/`** — a worked-out example showing the
+  split-file pattern: `settings.config.ts` at the root holds the
+  schema + `build()`, while `config/defaults.ts`, `config/local.ts`,
+  `config/dev.ts`, `config/stage.ts`, `config/prod.ts` each hold
+  one slice. Same generators, same CLI, same runtime — just
+  better git-blame.
+- **README "Where your config lives" section**. Disambiguates the
+  two "base" axes (intra-loader `defaults` vs inter-loader
+  `extends`) with a table and a decision matrix. Three file-layout
+  patterns documented: single-file, split-file, monorepo.
+- **AGENTS.md** gets a matching "two base axes" section and a
+  file-layout patterns list so AI assistants give consistent advice.
+
+### Internal
+
+- 87 tests across 15 files (no test changes; `inspect` is exercised
+  by smoke runs against the bundled examples). Typecheck + build
+  clean.
+
 ## [0.4.0] — 2026-05-15
 
 ### Added — `loadDotenvCascade()` helper

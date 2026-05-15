@@ -3,6 +3,7 @@ import { HELP_TEXT } from "./help.js";
 import { runValidate } from "./validate.js";
 import { runCheck } from "./check.js";
 import { runGenerate } from "./generate.js";
+import { runInspect } from "./inspect.js";
 
 /**
  * Programmatic entry point for the `node-settings` CLI. Returns the
@@ -26,6 +27,8 @@ export async function runCli(argv: readonly string[]): Promise<number> {
       return runValidate(args);
     case "check":
       return runCheck(args);
+    case "inspect":
+      return runInspect(args);
     case "generate":
     case "gen":
       return runGenerate(args);

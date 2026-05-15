@@ -26,6 +26,7 @@ One zod schema → typed runtime config + `.env.example` + Markdown docs + Kuber
 - [Install](#install)
 - [Quick start](#quick-start)
 - [Setting `APP_ENV` across deployments](#setting-app_env-across-deployments)
+- [Where your config lives](#where-your-config-lives)
 - [CLI](#cli)
 - [Programmatic generator API](#programmatic-generator-api)
 - [Monorepo support](#monorepo-support)
@@ -383,6 +384,114 @@ You can use `NODE_ENV` as your `envKey` if you only care about
 `production` vs `development`, but most real systems outgrow that
 quickly. Define `APP_ENV` from day one.
 
+## Where your config lives
+
+There are *two* "base" concepts in this library and they're often
+confused. They live on different axes.
+
+| Axis              | "Base" means                                        | Override mechanism                          | Where it shows up           |
+| ----------------- | --------------------------------------------------- | ------------------------------------------- | --------------------------- |
+| **Env axis**      | `defaults` — values shared across every environment | `perEnv[mode]` (deepMerged on top)          | Inside a single loader      |
+| **Package axis**  | `extends: [baseLoader]` — another loader's whole shape | child's own `envSchema` / `defaults` / `perEnv` | Across packages in a monorepo |
+
+You can use both at once — `defaults` is your *intra-loader* base, and
+`extends` is your *inter-loader* base.
+
+Plus there's a third "base" outside the loader: the `.env` cascade
+file convention (`.env`, `.env.local`, `.env.<mode>`, `.env.<mode>.local`).
+That layers *env var inputs* — separate from layering *config values*.
+
+### Single-file layout (default)
+
+Everything in one `settings.config.ts`. The simplest layout; works for
+small/medium apps. See [`examples/basic.config.ts`](./examples/basic.config.ts).
+
+```ts
+defineSettings({
+  envSchema: z.object({...}),
+  defaults: { bucket: "", workerConcurrency: 1, ... },
+  perEnv: {
+    local: { bucket: "local-bucket" },
+    dev:   { bucket: "dev-bucket" },
+    prod:  { bucket: "prod-bucket", workerConcurrency: 8 },
+  },
+  build: (env, config) => ({...}),
+});
+```
+
+### Split-file layout
+
+When `perEnv` outgrows a single file: keep the schema and `build()`
+in `settings.config.ts`, put each env's overrides in its own file
+under `./config/`. See [`examples/multi-file/`](./examples/multi-file)
+for a worked-out version.
+
+```
+settings.config.ts          # envSchema + build()
+config/
+  defaults.ts               # exports AppConfig type + defaults
+  local.ts                  # DeepPartial<AppConfig> for local
+  dev.ts                    # ...
+  prod.ts                   # ...
+```
+
+```ts
+// settings.config.ts
+import { defaults } from "./config/defaults.js";
+import { local } from "./config/local.js";
+import { dev   } from "./config/dev.js";
+import { prod  } from "./config/prod.js";
+
+export default defineSettings({
+  envSchema, envKey: "APP_ENV",
+  defaults,
+  perEnv: { local, dev, prod },
+  build: (env, config) => ({...}),
+});
+```
+
+Per-env files import `AppConfig` from `defaults.ts` and export
+`DeepPartial<AppConfig>`, so typos and removed fields fail compilation.
+Same generators, same CLI, same runtime — just better git-blame.
+
+### Monorepo layout (with `extends`)
+
+A shared base loader in one package, child loaders in each app. The
+child inherits the base's envSchema, defaults, and perEnv, then adds
+its own. See [the Monorepo section below](#monorepo-support).
+
+```
+packages/
+  shared/
+    settings.base.ts        # exports `base` from defineSettings(...)
+  content-api/
+    settings.config.ts      # defineSettings({ extends: [base], ... })
+  worker/
+    settings.config.ts      # defineSettings({ extends: [base], ... })
+```
+
+### Quick recap — which "base" do I want?
+
+| Question                                                              | Use                |
+| --------------------------------------------------------------------- | ------------------ |
+| "Some values are the same across local/dev/prod"                      | `defaults`         |
+| "Some values differ per environment"                                  | `perEnv[mode]`     |
+| "Some env vars come from `.env` files at the project root"            | `loadDotenvCascade` |
+| "Many apps in this monorepo share the same env vars and defaults"     | `extends: [base]`  |
+
+### See what your config resolves to
+
+When in doubt, dry-run it with `inspect`:
+
+```bash
+node-settings inspect --env=prod
+```
+
+Prints the env schema (the contract) plus the layered config
+(`defaults` deep-merged with `perEnv.prod`) without calling your
+`build()` function. No env values needed — useful for "what does prod
+look like?" without prod secrets.
+
 ## CLI
 
 ```bash
@@ -391,6 +500,9 @@ npx node-settings validate .env.production
 
 # Check every per-env branch for TODO placeholders and missing required envs
 npx node-settings check --env prod,stage
+
+# Inspect what each env actually resolves to (dry-run, no secrets needed)
+npx node-settings inspect --env prod
 
 # Generate artifacts from the schema
 npx node-settings generate env-example --out .env.example
