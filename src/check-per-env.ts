@@ -2,6 +2,7 @@ import type { z } from "zod";
 import type { SettingsLoader } from "./define-settings.js";
 import { deepMerge, type DeepPartial } from "./utils/deep-merge.js";
 import { isTodo } from "./todo.js";
+import { DEFAULT_SECRET_PATTERNS } from "./introspect.js";
 
 export interface PerEnvIssue {
   /** Which `perEnv` branch the issue belongs to (e.g. `"prod"`). */
@@ -18,7 +19,8 @@ export interface PerEnvIssue {
     | "empty-string"
     | "missing-required-env"
     | "missing-branch"
-    | "todo";
+    | "todo"
+    | "secret-in-config";
 }
 
 export interface CheckPerEnvOptions {
@@ -53,6 +55,19 @@ export interface CheckPerEnvOptions {
    * Defaults to true.
    */
   flagEmptyStrings?: boolean;
+  /**
+   * Run the design-time lint pass that catches values placed in the
+   * wrong layer (e.g. a secret-looking key inside `perEnv` where
+   * operator env vars cannot override it). Defaults to true.
+   */
+  lint?: boolean;
+  /**
+   * Regexes matched against perEnv key paths during lint. A match
+   * raises a `secret-in-config` warning suggesting the value belongs
+   * in `envSchema`. Defaults to the same patterns the introspector
+   * uses for secret detection.
+   */
+  secretKeyPatterns?: readonly RegExp[];
 }
 
 export interface PerEnvCompletenessReport {
@@ -98,6 +113,9 @@ export function checkPerEnvCompleteness<
   const placeholders =
     options.placeholderPatterns ?? DEFAULT_PLACEHOLDER_PATTERNS;
   const flagEmptyStrings = options.flagEmptyStrings ?? true;
+  const lintEnabled = options.lint ?? true;
+  const secretKeyPatterns =
+    options.secretKeyPatterns ?? DEFAULT_SECRET_PATTERNS;
 
   const requiredEnvKeys =
     options.requiredEnvKeys ??
@@ -125,6 +143,10 @@ export function checkPerEnvCompleteness<
       branch as DeepPartial<Record<string, unknown>>,
     );
     scanConfig(layered, "", env, placeholders, flagEmptyStrings, issues);
+
+    if (lintEnabled) {
+      lintSecretKeys(branch, "", env, secretKeyPatterns, issues);
+    }
 
     const runtimeEnv = options.envValues?.[env] ?? {};
     for (const key of requiredEnvKeys) {
@@ -215,5 +237,53 @@ function scanConfig(
       const childPath = path ? `${path}.${key}` : key;
       scanConfig(child, childPath, env, placeholders, flagEmptyStrings, issues);
     }
+  }
+}
+
+/**
+ * Lint pass: surface keys inside `perEnv` whose names look like secrets.
+ *
+ * Why this matters: `perEnv` values are not overridable by operator env
+ * vars at runtime — only `envSchema` fields are. If a secret-looking
+ * key ends up in `perEnv`, the operator (CI / Vault / Secrets Manager)
+ * has no way to inject its real value short of `CONFIG_OVERRIDE_JSON`
+ * or a code change. Catching this at design time prevents the trap.
+ *
+ * Only paths *inside `perEnv`* are linted — `defaults` keys are also
+ * project-controlled but the lint runs on each branch, which already
+ * exercises the same key names if they appear in defaults.
+ */
+function lintSecretKeys(
+  value: unknown,
+  path: string,
+  env: string,
+  patterns: readonly RegExp[],
+  issues: PerEnvIssue[],
+): void {
+  if (value === null || typeof value !== "object" || isTodo(value)) {
+    // Leaf — test the leaf path against secret patterns.
+    if (path && patterns.some((p) => p.test(path))) {
+      issues.push({
+        env,
+        path,
+        severity: "warning",
+        kind: "secret-in-config",
+        message:
+          `key '${path}' looks like a secret (matches a secret pattern) ` +
+          `but lives in perEnv where operator env vars cannot override it. ` +
+          `Move to envSchema so CI / Vault / Secrets Manager can inject this value.`,
+      });
+    }
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, idx) =>
+      lintSecretKeys(item, `${path}[${idx}]`, env, patterns, issues),
+    );
+    return;
+  }
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    const childPath = path ? `${path}.${key}` : key;
+    lintSecretKeys(child, childPath, env, patterns, issues);
   }
 }

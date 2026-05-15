@@ -124,6 +124,18 @@ When the user asks "I set the env var but `todo()` is still throwing",
 that's the symptom of using the wrong layer. See
 `docs/CONFIGURATION.md` "Which pattern for which value?".
 
+The `check` CLI runs a **`secret-in-config` lint** that automatically
+flags this mistake — any `perEnv` key whose name matches the default
+secret patterns (`PASSWORD`, `SECRET`, `TOKEN`, `PRIVATE_?KEY`,
+`API_?KEY`, `ACCESS_?KEY`, `CREDENTIAL`, `PASSPHRASE`, `DSN`) raises
+a `secret-in-config` warning suggesting it be moved to `envSchema`.
+Disable with `lint: false`; customise with `secretKeyPatterns`.
+
+For the actual infra channels operators use (GitHub Actions secrets,
+Vault, AWS / GCP Secrets Manager, External Secrets, Doppler, Infisical,
+operator-supplied `.env.<mode>.local`), see `docs/DEPLOYMENT.md`
+"Injecting secrets from infra". They all converge on `process.env`.
+
 ## `todo(...)` sentinels for unfilled values
 
 ```ts

@@ -153,6 +153,162 @@ Or use [`presets.render()`](#platform-presets) / `presets.railway()`.
 Treat them as orthogonal. `NODE_ENV=production` may be true for *every*
 `APP_ENV` value other than `local`.
 
+## Injecting secrets from infra
+
+Sensitive values (`DB_PASSWORD`, `SENTRY_DSN`, `STRIPE_API_KEY`, ...)
+should live in `envSchema`, not `perEnv` — that's the *only* layer
+the operator can override at deploy time. Every common infra channel
+ends up at the same place: `process.env`. Once the secret is in
+`process.env`, zod validates it, and any committed `.env` placeholders
+are silently overridden (process.env wins).
+
+The library does not pull secrets directly from Vault / AWS Secrets
+Manager / GCP Secret Manager — that's the deploy platform's job.
+Below are the canonical patterns.
+
+### GitHub Actions
+
+Repo secrets are exposed as `secrets.X`; set them in the job's `env:`
+block so they reach `process.env`:
+
+```yaml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: prod
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+    steps:
+      - run: npx node-settings validate
+      - run: ./deploy.sh
+```
+
+For environment-scoped secrets, use [GitHub Environments](https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment)
+and reference `environment: prod` at the job level — the same
+`${{ secrets.X }}` syntax then pulls from that environment's secrets.
+
+### HashiCorp Vault
+
+Three common ingestion patterns; all end in env vars:
+
+- **Vault Agent** as a sidecar/init container writes secrets to a
+  file and `source`s them into the process env at start.
+- **Vault Sidecar with `consul-template`** renders an env file the
+  application reads (often into `.env.<mode>.local` style).
+- **CSI Volume / Vault Injector** mounts secrets as files; a small
+  shim reads them into env vars before the app boots.
+
+```dockerfile
+# Dockerfile or entrypoint script
+ENTRYPOINT ["sh", "-c", "set -a; . /vault/secrets/env; set +a; exec node dist/main.js"]
+```
+
+After this, `process.env.SENTRY_DSN` (etc.) is set by the time
+`settings(process.env)` runs.
+
+### AWS Secrets Manager + ECS / Fargate
+
+ECS task definition's `secrets` block pulls a Secrets Manager (or
+SSM Parameter Store) entry into an env var:
+
+```json
+{
+  "containerDefinitions": [{
+    "environment": [{ "name": "APP_ENV", "value": "prod" }],
+    "secrets": [
+      { "name": "DB_PASSWORD", "valueFrom": "arn:aws:secretsmanager:...:secret:db-password" },
+      { "name": "SENTRY_DSN",  "valueFrom": "arn:aws:secretsmanager:...:secret:sentry-dsn"  }
+    ]
+  }]
+}
+```
+
+ECS injects each `secrets` entry as an env var at container start —
+identical to `environment` from the app's perspective.
+
+### AWS Lambda + Secrets Manager
+
+Two options:
+
+- **Lambda env vars** — store the secret value directly (KMS-encrypted
+  by Lambda). Simple, no extra fetch latency.
+- **AWS Secrets Manager Lambda extension** — fetches the secret at
+  invoke time. Set `SECRETS_MANAGER_TIMEOUT_MILLIS` and read via the
+  local extension HTTP API; many teams wrap that in a tiny bootstrap
+  that exports the result as `process.env.X` before importing the app.
+
+### Kubernetes — External Secrets Operator / Sealed Secrets
+
+These tools materialise a Kubernetes `Secret` from your secret backend.
+The pod consumes it via `envFrom`:
+
+```yaml
+spec:
+  containers:
+    - name: api
+      envFrom:
+        - configMapRef: { name: my-app-config }    # from node-settings generate k8s
+        - secretRef:    { name: my-app-secret }    # mounted env vars
+```
+
+The Secret's `data` keys become env var names. `node-settings generate
+k8s --name my-app` already emits a Secret manifest with the right
+keys — fill in the values via your secret operator and apply.
+
+### Doppler / Infisical / 1Password CLI
+
+All three wrap your start command and inject secrets into the child
+process's `process.env`:
+
+```bash
+doppler run -- node dist/main.js
+infisical run -- node dist/main.js
+op run --env-file .env.prod -- node dist/main.js
+```
+
+No app changes needed — `settings(process.env)` sees the injected
+values.
+
+### Operator-supplied `.env.<mode>.local`
+
+If your infra team prefers to maintain a separate env file (kept in a
+private repo or a secrets bucket) and copy it onto the host at deploy
+time, name it `.env.<APP_ENV>.local`. The `.local` suffix:
+
+- Is the conventional gitignored pattern (`.gitignore` already excludes
+  `.env.*` except `.sample`/`.example`).
+- Sits **above** committed `.env` and `.env.<mode>` in the cascade
+  precedence — operator's values win over any committed placeholders.
+- Sits **below** `process.env` — explicit CI env vars still win if
+  both are set (intentional: lets ops promote a value to "always
+  override" by setting it as an env var without touching the file).
+
+```bash
+# At deploy time
+scp ops-vault://prod-secrets.env app@host:/srv/myapp/.env.prod.local
+ssh app@host "APP_ENV=prod node /srv/myapp/dist/main.js"
+```
+
+### All paths converge
+
+Whichever channel you pick:
+
+```
+GitHub Actions secrets  ┐
+Vault Agent / Sidecar    │
+AWS Secrets Manager      │
+GCP Secret Manager       ├──► process.env  ──► envSchema.parse()  ──► your app
+External Secrets / Sealed│
+Doppler / Infisical / 1P │
+.env.<mode>.local        ┘
+```
+
+That's why **`envSchema` is the only safe place for operator-injected
+values**. The `secret-in-config` lint in `node-settings check`
+enforces this by flagging secret-looking keys that ended up in
+`perEnv`.
+
 ## Platform presets
 
 For platforms that expose their own deployment-environment signal

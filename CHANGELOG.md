@@ -3,6 +3,54 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] — 2026-05-15
+
+### Added — `secret-in-config` lint
+
+`checkPerEnvCompleteness` now runs a design-time lint pass that
+flags secret-looking keys placed in `perEnv`. This is the trap from
+the previous release: a value the operator is supposed to inject
+ends up in `perEnv` instead of `envSchema`, and the operator's
+`process.env.X` cannot reach it.
+
+- **New `PerEnvIssue` kind**: `'secret-in-config'` (severity:
+  `warning`). The message points users to `envSchema` so CI / Vault
+  / Secrets Manager can override the value.
+- **New `CheckPerEnvOptions` fields**:
+  - `lint?: boolean` (default `true`) — toggle the pass.
+  - `secretKeyPatterns?: readonly RegExp[]` (defaults to the
+    introspector's `DEFAULT_SECRET_PATTERNS`) — customise which
+    names trigger.
+- **Patterns expanded.** `DEFAULT_SECRET_PATTERNS` now uses optional
+  underscores so it matches both SCREAMING_SNAKE env-var names
+  (`PRIVATE_KEY`) and camelCase config-key names (`privateKey`):
+  `PASSWORD`, `SECRET`, `TOKEN`, `PRIVATE_?KEY`, `API_?KEY`,
+  `ACCESS_?KEY`, `CREDENTIAL`, `PASSPHRASE`, `DSN`.
+- **CLI**: `node-settings check` surfaces these as warnings (does
+  not exit non-zero by default — use `--no-allow-warnings` to fail).
+- **Help text + AGENTS.md** updated to reflect the new lint.
+
+### Added — "Injecting secrets from infra" guide
+
+`docs/DEPLOYMENT.md` gets a comprehensive new section covering the
+infra channels users actually use:
+
+- GitHub Actions secrets → `env:` block
+- HashiCorp Vault (Agent / Sidecar / CSI volume)
+- AWS Secrets Manager + ECS / Fargate
+- AWS Lambda + Secrets Manager
+- Kubernetes External Secrets Operator / Sealed Secrets
+- Doppler / Infisical / 1Password CLI wrappers
+- Operator-supplied `.env.<mode>.local` (cascade integration)
+
+All paths converge on `process.env`, which is the only safe
+override channel — reinforces the design rationale for the lint.
+
+### Internal
+
+- 6 new tests in `src/check-lint.test.ts`. 124 tests across 18
+  files, all green. Typecheck + build clean. No API breaking changes.
+
 ## [0.7.1] — 2026-05-15
 
 ### Fixed — sample conflated two distinct value patterns

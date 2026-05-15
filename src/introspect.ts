@@ -37,14 +37,30 @@ export interface IntrospectOptions {
   secretPatterns?: RegExp[];
 }
 
+/**
+ * Patterns that flag a name as secret-looking. Used in two places:
+ *
+ *   1. {@link introspectEnvSchema} — to auto-tag env vars as secrets
+ *      for the K8s Secret manifest generator and `.env.example` masking.
+ *   2. The `secret-in-config` lint in {@link checkPerEnvCompleteness}
+ *      — to warn when a key lives in `perEnv` (project-controlled)
+ *      where operator env vars cannot override it.
+ *
+ * Patterns use an optional `_?` between words so they match both the
+ * SCREAMING_SNAKE convention used for env vars (`PRIVATE_KEY`, `API_KEY`)
+ * and the camelCase convention used for config keys (`privateKey`,
+ * `apiKey`, `stripeApiKey`).
+ */
 export const DEFAULT_SECRET_PATTERNS: readonly RegExp[] = [
   /PASSWORD/i,
   /SECRET/i,
   /TOKEN/i,
-  /PRIVATE_KEY/i,
-  /API_KEY/i,
+  /PRIVATE_?KEY/i,
+  /API_?KEY/i,
+  /ACCESS_?KEY/i,
   /CREDENTIAL/i,
   /PASSPHRASE/i,
+  /DSN/i,
 ];
 
 /**

@@ -23,8 +23,9 @@ validate
 check
   node-settings check [--env <a,b,c>] [--env-file name=path,name=path]
                       [--allow-warnings | --no-allow-warnings]
-    Reports placeholder values, empty required strings, and missing
-    required env vars per branch.
+    Reports placeholder values, empty required strings, missing
+    required env vars, unfilled todo() sentinels, and secret-looking
+    keys placed in perEnv (where operator env vars cannot reach them).
 
 inspect
   node-settings inspect [--env <a,b,c>] [--config <path>]
