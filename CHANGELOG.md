@@ -3,6 +3,61 @@
 All notable changes to this project are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.0] — 2026-05-15
+
+### Added — five new layers of verification
+
+Audit of "how do we know this works?" surfaced gaps: unit tests alone
+didn't cover CLI behaviour end-to-end, exact generator output, the
+built `dist/` exports, or what `pnpm pack` actually ships. This
+release closes those gaps so we can publish to npm with confidence.
+
+- **CLI e2e tests** (`src/cli/cli-e2e.test.ts`) — 11 tests calling
+  `runCli` directly against `sample/settings.ts`, asserting exit
+  codes, file outputs, and console output for every subcommand
+  (`inspect`, `check`, `generate {env-example,envs,docs,k8s}`, help,
+  unknown command).
+- **Generator snapshot tests** (`src/generators/snapshots.test.ts`)
+  — 8 `toMatchSnapshot` tests covering `.env.example` (default +
+  unmasked), Markdown docs (default + custom title), K8s manifests
+  (stringData + base64 inlineSecretValues), per-env examples (with
+  + without summary). Any format change shows up as a snapshot diff
+  in PR review.
+- **`scripts/verify-dist.mjs`** — Node script that imports the
+  built `dist/index.js`, `dist/generators/index.js`,
+  `dist/cli/index.js` and asserts every public export exists,
+  round-trips a `defineSettings` call, and verifies the
+  `NodeSettingsError(PER_ENV_TODO)` contract. Catches packaging
+  mistakes that src/ tests can't see.
+- **`scripts/verify-pack.mjs`** — runs `pnpm pack`, lists tarball
+  contents, asserts required files (`dist/`, `README.md`, `LICENSE`,
+  `AGENTS.md`, `CHANGELOG.md`) are present and forbidden files
+  (`src/`, `sample/`, `docs/`, `scripts/`, `*.test.*`,
+  `__snapshots__`, `tsconfig*`, `pnpm-lock.yaml`) are absent. Also
+  checks every `.js` has a paired `.d.ts`.
+- **CI integration** — every push / PR now runs all five layers:
+  typecheck → test (incl. snapshots + e2e) → build → verify:dist
+  → verify:sample → verify:pack on Node 18 / 20 / 22.
+
+### Added — `package.json` scripts
+
+- `pnpm verify` — chains typecheck + test + build + verify:dist +
+  verify:sample + verify:pack. The single command before any release.
+- `pnpm verify:dist` / `verify:sample` / `verify:pack` — individual
+  layers. Useful for debugging a single failure mode.
+- `prepublishOnly` now runs `verify:dist` and `verify:pack` too,
+  so `npm publish` cannot ship a broken bundle.
+
+### Changed — `package.json` `files`
+
+Now includes `AGENTS.md` and `CHANGELOG.md` in the published
+tarball alongside `dist/`, `README.md`, and `LICENSE`.
+
+### Internal
+
+- 11 + 8 = 19 new tests. 143 tests across 20 files, all green.
+  Typecheck + build clean. No breaking API changes.
+
 ## [0.8.0] — 2026-05-15
 
 ### Added — `secret-in-config` lint

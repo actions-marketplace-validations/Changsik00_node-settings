@@ -301,6 +301,31 @@ src/
     help.ts              # help text
 ```
 
+## Verification layers (running `pnpm verify`)
+
+Five layers in order, used to ship to npm with confidence:
+
+1. **`pnpm typecheck`** — `tsc --noEmit`.
+2. **`pnpm test`** — vitest. Includes unit tests, CLI e2e tests
+   (`src/cli/cli-e2e.test.ts`), and generator snapshot tests
+   (`src/generators/snapshots.test.ts`).
+3. **`pnpm build`** — `tsc -b tsconfig.build.json`.
+4. **`pnpm verify:dist`** — `scripts/verify-dist.mjs`. Imports built
+   `dist/index.js`, `dist/generators/index.js`, `dist/cli/index.js`,
+   round-trips a `defineSettings` call, asserts the
+   `NodeSettingsError(PER_ENV_TODO)` contract.
+5. **`pnpm verify:sample`** — runs the CLI binary against
+   `sample/settings.ts` to catch packaging regressions.
+6. **`pnpm verify:pack`** — `scripts/verify-pack.mjs`. Runs
+   `pnpm pack`, asserts required files present and forbidden files
+   (src, sample, tests, snapshots, docs, scripts, lockfile, tsconfig)
+   are NOT in the tarball.
+
+CI runs all of these on every push / PR across Node 18 / 20 / 22.
+
+When the user reports a regression, the first question is: which
+layer would have caught it? If none would have, add coverage there.
+
 ## Conventions in this codebase
 
 - **ESM only** (`"type": "module"`). All imports use `.js` suffix even

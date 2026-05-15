@@ -36,3 +36,12 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Verify dist exports
+        run: pnpm verify:dist
+
+      - name: Verify CLI against sample
+        run: pnpm verify:sample
+
+      - name: Verify pack contents
+        run: pnpm verify:pack
