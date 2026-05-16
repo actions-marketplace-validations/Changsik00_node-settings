@@ -83,13 +83,26 @@ thinking — feel free to re-rank during planning.
       nightly schedule rather than per-PR. _(medium)_
 - [ ] **Windows in CI** — would require `scripts/verify-pack.mjs` to
       use a Node-native tarball reader instead of `tar -tzf`. _(small)_
-- [ ] **Real downstream consumer repo** — a tiny app that depends on
-      the published version and runs in our CI matrix. Validates
-      that the public API survives `tsc --skipLibCheck false` in
-      consumer projects. _(small, post-publish)_
+- [x] ~~**Real downstream consumer repo** — a tiny app that depends~~
+      ~~on the published version and runs in our CI matrix.~~ Shipped:
+      `examples/consumer/` + `.github/workflows/consumer.yml`. Daily
+      cron + push/PR trigger. Caught one finding worth following up
+      on: `AnySettingsLoader` upper bound has a variance issue —
+      specific loaders satisfy the `extends` use site through
+      inference but fail explicit `T extends AnySettingsLoader`
+      checks. Not user-visible today; revisit when reworking the
+      `extends` types.
 - [ ] **Coverage tighten** — `validate-options.ts` and
       `check-per-env.ts` have lower per-file coverage; targeted tests
       to bring them >85%. _(small)_
+- [ ] **AnySettingsLoader variance** — `AnySettingsLoader` is meant
+      as the "any loader" upper bound for `extends` arrays. Its
+      `build: (env: { [x: string]: any }, config: object) => object`
+      signature trips function-arg contravariance, so a specific
+      loader fails `T extends AnySettingsLoader` from the consumer
+      side even though `extends: [specificLoader]` works fine
+      (inference avoids the constraint check). Rework so explicit
+      satisfies works; surfaced by the consumer smoke test. _(small)_
 
 ## Generators
 

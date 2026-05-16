@@ -8,6 +8,18 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ## [Unreleased]
 
+### Added
+
+- **External consumer smoke test** (`examples/consumer/`). A private
+  test package that installs `@env-kit/node-settings` from the npm
+  registry (not a workspace link) and compiles a small app under
+  `strict: true, skipLibCheck: false` plus a Node runtime check. New
+  CI workflow `.github/workflows/consumer.yml` runs it on every push
+  to `main`, on PRs that touch the consumer dir, and on a daily cron
+  (catches registry-side regressions). Closes the gap between "works
+  in our repo" and "works from npm" — a class of issue that loose
+  in-repo `skipLibCheck: true` settings can mask.
+
 ## [0.11.0] — 2026-05-16
 ### Added
 

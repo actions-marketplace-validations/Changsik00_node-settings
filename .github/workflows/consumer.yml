@@ -1,0 +1,60 @@
+name: Consumer smoke
+
+# Validates that the published @env-kit/node-settings package works
+# from an external consumer's perspective: fresh install from npm,
+# strict tsc with skipLibCheck: false, and a runtime smoke that
+# exercises the loader + every generator + the error contract.
+#
+# This runs on every push to main (after the release.yml workflow
+# might have just published a new version) and on PRs that touch
+# examples/consumer/**. Catches the gap between "works in our repo"
+# and "works for an actual npm consumer".
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "examples/consumer/**"
+      - ".github/workflows/consumer.yml"
+  schedule:
+    # Daily at 14:00 UTC — catches if a registry-side change (e.g. a
+    # newer zod minor or @types/node) regresses our public types.
+    - cron: "0 14 * * *"
+
+jobs:
+  smoke:
+    name: external consumer (${{ matrix.os }} / node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: ["20", "22"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+          cache-dependency-path: examples/consumer/pnpm-lock.yaml
+
+      - name: Install consumer deps from npm registry
+        working-directory: examples/consumer
+        # --ignore-workspace prevents pnpm from resolving
+        # @env-kit/node-settings back to the local repo. The whole
+        # point is to pull from the registry like a real consumer.
+        run: pnpm install --ignore-workspace --no-frozen-lockfile
+
+      - name: Typecheck (strict + skipLibCheck:false)
+        working-directory: examples/consumer
+        run: pnpm check
+
+      - name: Runtime smoke
+        working-directory: examples/consumer
+        run: pnpm smoke
