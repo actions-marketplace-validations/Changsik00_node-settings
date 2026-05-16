@@ -21,10 +21,14 @@ thinking — feel free to re-rank during planning.
 - [ ] **GitHub Action major-tag rolling** — move `action.yml` into a
       dedicated tag scheme (`v1`, `v1.0.0`) so users can pin to a
       major version line. _(small, post-publish)_
-- [x] ~~**Trusted Publishing (OIDC) migration**~~ — Shipped:
-      `release.yml` now publishes via npm OIDC + `--provenance`. No
-      `NPM_TOKEN` secret involved; tarballs carry an npm provenance
-      statement linking them to the exact build commit.
+- [ ] **Trusted Publishing (OIDC) finalize** — `release.yml` is
+      wired for OIDC + `--provenance` (commit c29c664) but the first
+      publish attempt (v0.11.1) returned 404 from npm despite a
+      successful provenance sigstore submission. v0.11.1 was
+      published locally as a fallback. Next steps: verify the npm
+      Trusted Publisher entry exactly matches the OIDC subject the
+      workflow sends; possibly capture the OIDC claims via a debug
+      step. Should be unblocked in 1-2 iterations. _(small)_
 - [ ] **Pre-built Docker image** containing the CLI, for non-Node
       CI/CD shells (Jenkins / Tekton / Argo Workflows). _(medium)_
 - [ ] **CI examples for Bitbucket Pipelines, GitLab CI, CircleCI** in

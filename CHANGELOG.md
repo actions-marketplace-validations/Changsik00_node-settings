@@ -9,18 +9,6 @@ under `[Unreleased]` and are promoted to a versioned section when
 ## [Unreleased]
 
 ## [0.11.1] — 2026-05-16
-### Changed
-
-- **Releases now use npm Trusted Publishing (OIDC) + provenance.**
-  `release.yml` no longer reads the `NPM_TOKEN` secret. Instead the
-  workflow's GitHub Actions identity is verified by npm at publish
-  time and exchanged for a short-lived credential. The published
-  tarball carries an [npm provenance statement][prov] so consumers
-  can verify it was built from this exact commit. Removes the
-  long-lived-token attack surface; matches npm's current best
-  practice for CI publishing.
-
-[prov]: https://docs.npmjs.com/generating-provenance-statements
 
 ### Added
 
@@ -34,6 +22,31 @@ under `[Unreleased]` and are promoted to a versioned section when
   registry-side regressions). Closes the gap between "works in our
   repo" and "works from npm" — a class of issue that loose in-repo
   `skipLibCheck: true` settings can mask.
+- **Realistic `.env.<mode>` files in `sample/env/`.** Previously the
+  directory was empty even though the README claimed templates lived
+  there. Now ships `.env`, `.env.local`, `.env.dev`, `.env.stage`,
+  `.env.prod` with example values + comments explaining which lines
+  CI fills in.
+- **`sample/README.md` rewrite** with an explicit "env/ = sensitive
+  runtime values vs config/ = settings + cross-team intent" table
+  plus an ASCII data-flow diagram showing the four `.env` tiers
+  cascading into `process.env` and the rest of the pipeline.
+
+### Changed
+
+- **Merged `examples/consumer/` into `sample/consumer/`.** Having
+  two example-like directories was confusing; the consumer smoke
+  test now lives under the canonical sample/ home. CI workflow
+  paths updated.
+
+### Notes
+
+- This release was published from a local `npm publish` while the
+  CI Trusted Publishing path is being debugged (see BACKLOG.md
+  "Trusted Publishing finalize"). Subsequent releases will use the
+  GitHub Actions workflow once OIDC matching is verified. The
+  tarball for this version therefore carries no npm provenance
+  attestation; that lands in v0.11.2+.
 
 ## [0.11.0] — 2026-05-16
 ### Added
