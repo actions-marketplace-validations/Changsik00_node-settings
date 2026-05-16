@@ -8,6 +8,20 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ## [Unreleased]
 
+### Changed
+
+- **`--workspace` discovery now parses `pnpm-workspace.yaml` and
+  `package.json` `workspaces` instead of the hardcoded heuristic
+  scan.** Priority order: pnpm-workspace.yaml (authoritative when
+  present) → package.json workspaces (npm / yarn / Bun) →
+  heuristic fallback (`packages/`, `apps/`, `services/`, `libs/`)
+  for casual single-app repos with no declared workspace config.
+  Supports `!`-prefixed exclusions and `**` recursive globs.
+  Glob matching via `picomatch` (small, zero-dep). `node_modules`
+  and dotfile dirs are always skipped. An explicit empty
+  `packages: []` is honoured — no fallback. 8 new workspace tests
+  covering each source and edge case.
+
 ### Added
 
 - **Migration guides** (`docs/migration/`) for moving onto this

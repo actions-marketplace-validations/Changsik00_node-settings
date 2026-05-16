@@ -73,13 +73,17 @@ thinking — feel free to re-rank during planning.
 
 ## Monorepo
 
-- [ ] **Full pnpm-workspace.yaml glob expansion** — replace the
-      heuristic `packages/`+`apps/` directory scan in
-      `src/cli/workspace.ts` with proper workspace glob parsing.
-      _(medium)_
-- [ ] **Nx / Lerna explicit support** — first-class discovery for
-      these layouts (`workspaces` field, `lerna.json` `packages`).
-      _(small once globs are in)_
+- [x] ~~**Full pnpm-workspace.yaml glob expansion**~~ — Shipped:
+      `discoverWorkspacePackages()` now parses pnpm-workspace.yaml's
+      `packages:` globs first, then package.json `workspaces` (npm /
+      yarn / Bun), then falls back to the heuristic dir scan.
+      Supports `!`-exclusions and `**` recursion via picomatch.
+- [ ] **Nx / Lerna explicit support** — `lerna.json`'s `packages`
+      field already works through the npm-workspaces path
+      (package.json `workspaces`). What's missing: reading
+      `nx.json`'s `projects` config and `lerna.json`'s `packages`
+      array directly when neither pnpm nor package.json workspaces
+      is declared. _(small)_
 - [ ] **Cross-package extends graph** — `node-settings inspect
       --workspace --graph` prints a tree of which apps extend which
       base loader. _(small)_

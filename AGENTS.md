@@ -90,10 +90,21 @@ The CLI auto-discovers `node-settings.config.{ts,mts,js,mjs,cjs}` or
 (`.git`, `pnpm-workspace.yaml`, `turbo.json`, `nx.json`, `lerna.json`,
 `rush.json`).
 
-`check`, `inspect`, and `preflight` accept `--workspace`: walks up to
-the workspace root, scans `packages/`, `apps/`, `services/`, `libs/`
-for child directories containing a settings config, and runs the
-command against each. Exit code aggregates the worst result.
+`check`, `inspect`, and `preflight` accept `--workspace`: walks up
+to the workspace root and discovers packages in priority order:
+
+1. **`pnpm-workspace.yaml`** `packages:` globs (authoritative when
+   present; supports `!`-prefixed exclusions and `**` recursion).
+2. **`package.json` `workspaces`** field (npm / yarn / Bun
+   convention; both array and `{ packages: [...] }` shapes).
+3. **Heuristic fallback** — scans `packages/`, `apps/`, `services/`,
+   `libs/` one level deep, for casual single-app repos without a
+   declared workspace config.
+
+The discovered directories are filtered to those containing a
+`node-settings.config.*` (or `settings.config.*`) file. Exit code
+aggregates the worst result across packages. Glob expansion uses
+`picomatch`; `node_modules` and dotfile dirs are always skipped.
 
 A GitHub Action is shipped at `action.yml` (composite action). Users
 invoke it as `uses: Changsik00/node-settings@v1` with inputs
