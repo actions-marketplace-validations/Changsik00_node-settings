@@ -27,13 +27,29 @@ GitHub Actions `release.yml` workflow takes it from there to npm.
    6. Tags `v0.11.0`.
    7. Pushes the commit and the tag.
 
-3. **`release.yml` picks up the tag** push and publishes to npm via
-   **Trusted Publishing** (OIDC). No long-lived NPM_TOKEN involved —
-   GitHub Actions's identity is exchanged for a short-lived publish
-   credential, and the resulting tarball carries [npm provenance][prov]
-   so consumers can verify it was built from this exact commit.
-   The Trusted Publisher is configured on npm.com for the package
-   (`@env-kit/node-settings` → Settings → Trusted Publishers).
+3. **`release.yml` picks up the tag** push and creates the GitHub
+   Release page (body = matching CHANGELOG section).
+4. **`npm publish` is manual** from your local shell:
+
+   ```bash
+   npm login                     # one-time per machine; opens browser
+   npm publish --access public   # publishes the current package.json version
+   npm view @env-kit/node-settings version   # verify
+   ```
+
+   `npm publish` runs against the local `dist/` (already built by
+   `pnpm release` via the verify chain) so what ships is exactly
+   what verify approved.
+
+> **Why manual publish?** Trusted Publishing (OIDC) is wired up in
+> `release.yml` and ready to use — `id-token: write` is granted and
+> the `--provenance` flag has been tested. But the first publish
+> attempt returned a 404 from npm despite a correct Trusted Publisher
+> configuration, and rather than block releases on that debugging
+> session we kept the GitHub Release automation and pushed npm
+> publish back to the local shell. Tracked in BACKLOG.md "Trusted
+> Publishing finalize". When that's resolved, restore the publish
+> step from git history (commit c29c664) and drop this manual step.
 
 [prov]: https://docs.npmjs.com/generating-provenance-statements
 

@@ -1,18 +1,37 @@
 name: Release
 
+# Tag-triggered release workflow.
+#
+# What this job does:
+#   1. Sanity-rebuilds the package and runs typecheck + tests.
+#   2. Extracts the matching CHANGELOG section for the tag.
+#   3. Creates the GitHub Release page with that body.
+#
+# What this job does NOT do:
+#   - `npm publish` is intentionally manual (`npm publish --access public`
+#     from a logged-in local shell) until the npm Trusted Publishing
+#     handshake is finalized. See BACKLOG.md "Trusted Publishing
+#     finalize" — the workflow file is otherwise ready for OIDC
+#     (id-token: write is granted, --provenance flag tested locally).
+#
+# When Trusted Publishing is fixed:
+#   - Re-add the publish step (see git history; commit c29c664).
+#   - Optionally gate `Create GitHub Release` on `needs: publish` once
+#     publish is reliable.
+
 on:
   push:
     tags:
       - 'v*'
 
 jobs:
-  publish:
-    name: publish to npm
+  release:
+    name: GitHub Release
     runs-on: ubuntu-latest
     permissions:
       # `contents: write` lets the workflow create the GitHub Release
-      # entry below. `id-token: write` lets npm publish via OIDC
-      # (Trusted Publishing) — no long-lived NPM_TOKEN required.
+      # entry. `id-token: write` is kept for the eventual npm OIDC
+      # migration — harmless when unused.
       contents: write
       id-token: write
     steps:
@@ -26,25 +45,12 @@ jobs:
         with:
           node-version: 22.x
           cache: pnpm
-          registry-url: https://registry.npmjs.org
 
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
-
-      - name: Publish (OIDC / Trusted Publishing)
-        # No NODE_AUTH_TOKEN — npm CLI detects the GitHub Actions
-        # OIDC token (via id-token: write) and exchanges it for a
-        # short-lived publish credential. The Trusted Publisher must
-        # be configured on npm.com for this package:
-        #   npm.com → @env-kit/node-settings → Settings →
-        #   Trusted Publishers → GitHub Actions:
-        #     repo owner:       Changsik00
-        #     repo:             node-settings
-        #     workflow file:    release.yml
-        run: pnpm publish --no-git-checks --access public --provenance
 
       - name: Extract changelog section for this tag
         run: node scripts/changelog-extract.mjs ${{ github.ref_name }} > RELEASE_NOTES.md
