@@ -10,6 +10,18 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ### Added
 
+- **Next.js plugin** — `import { withNodeSettings } from
+  "@changsik00/node-settings/next"`. Wraps the user's `next.config`
+  as `withNodeSettings(nextConfig, options?)` and runs env
+  validation during config evaluation, *before* Webpack / Turbopack
+  starts. `next build` and `next export` always abort on validation
+  failure; `next dev` aborts too unless `failOnDev: false`. Reads
+  `process.env.NEXT_PHASE` to pick the right behaviour. Next.js is
+  added as an *optional* peer dep (`^13 || ^14 || ^15 || ^16`); only
+  consumers importing the `/next` entry need it installed.
+- The "Build-time validation plugin" comparison row now genuinely
+  covers both Vite and Next.js — the row label was updated to reflect
+  that.
 - **`node-settings diff [file|-]` — K8s drift detection.** Compares
   a live ConfigMap / Secret YAML (file path or stdin) against the env
   schema. Four issue kinds: `missing-required` and

@@ -23,13 +23,21 @@ const DIST_GENERATORS = resolvePath(ROOT, "dist/generators/index.js");
 const DIST_CLI = resolvePath(ROOT, "dist/cli/index.js");
 const DIST_BIN = resolvePath(ROOT, "dist/cli/bin.js");
 const DIST_VITE = resolvePath(ROOT, "dist/vite/index.js");
+const DIST_NEXT = resolvePath(ROOT, "dist/next/index.js");
 
 function fail(msg) {
   console.error(`FAIL  ${msg}`);
   process.exit(1);
 }
 
-for (const p of [DIST_INDEX, DIST_GENERATORS, DIST_CLI, DIST_BIN, DIST_VITE]) {
+for (const p of [
+  DIST_INDEX,
+  DIST_GENERATORS,
+  DIST_CLI,
+  DIST_BIN,
+  DIST_VITE,
+  DIST_NEXT,
+]) {
   if (!existsSync(p)) fail(`missing dist artefact: ${p}`);
 }
 
@@ -37,6 +45,7 @@ const root = await import(DIST_INDEX);
 const gen = await import(DIST_GENERATORS);
 const cli = await import(DIST_CLI);
 const vite = await import(DIST_VITE);
+const next = await import(DIST_NEXT);
 
 const REQUIRED_ROOT = [
   // Core
@@ -103,6 +112,10 @@ for (const hook of ["config", "configResolved", "buildStart"]) {
   if (typeof dummyPlugin[hook] !== "function") {
     fail(`vite plugin missing hook '${hook}'`);
   }
+}
+
+if (typeof next.withNodeSettings !== "function") {
+  fail("dist/next/index.js missing function 'withNodeSettings'");
 }
 
 // Verify presets is the expected namespace
@@ -198,8 +211,9 @@ try {
   }
 }
 
-console.log(`OK    dist/ exposes ${REQUIRED_ROOT.length} root + ${REQUIRED_GEN.length} generator + 1 cli + 1 vite exports`);
+console.log(`OK    dist/ exposes ${REQUIRED_ROOT.length} root + ${REQUIRED_GEN.length} generator + 1 cli + 1 vite + 1 next exports`);
 console.log(`OK    presets namespace has all ${REQUIRED_PRESET_KEYS.length} platforms`);
 console.log("OK    runtime round-trip + NodeSettingsError contract intact");
 console.log("OK    vite plugin shape (name + config/configResolved/buildStart hooks)");
 console.log("OK    defineClientEnv: server-only keys filtered + prefix violation caught");
+console.log("OK    next plugin: withNodeSettings export present");

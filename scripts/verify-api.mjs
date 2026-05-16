@@ -34,6 +34,7 @@ const TARGETS = [
   { dts: "dist/generators/index.d.ts", ref: "api-surface/generators.d.ts" },
   { dts: "dist/cli/index.d.ts", ref: "api-surface/cli.d.ts" },
   { dts: "dist/vite/index.d.ts", ref: "api-surface/vite.d.ts" },
+  { dts: "dist/next/index.d.ts", ref: "api-surface/next.d.ts" },
 ];
 
 const HEADER = [

@@ -99,7 +99,7 @@ see [`sample/`](./sample).
 | `todo(...)` sentinel for unfilled values             |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | **K8s ConfigMap + Secret YAML**                      |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | **K8s drift detection (`diff` CLI)**                 |   –    |      –      |     –      |    –    |      –      |        ✅         |
-| **Vite build-time validation plugin**                |   –    |      –      |     –      |    –    |      –      |        ✅         |
+| **Build-time validation plugins (Vite + Next.js)**   |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | CLI (validate / check / inspect / generate)          |   –    |      –      |     –      |    –    |      –      |        ✅         |
 
 The differentiation is concentrated in monorepo composition, per-env
@@ -162,37 +162,41 @@ Auto-discovers `node-settings.config.{ts,js,...}` (or
 
 See `action.yml` for the full input list.
 
-### Vite plugin
+### Build-time validation plugins
 
 Fail the dev server / production build the moment your env is invalid,
-without waiting for the app to boot:
+without waiting for the app to boot. Both plugins reuse the same
+loader your runtime code calls, so the contract that gated the build
+is the contract that ships.
+
+**Vite** (`vite.config.ts`):
 
 ```ts
-// vite.config.ts
 import { defineConfig } from "vite";
 import { nodeSettings } from "@changsik00/node-settings/vite";
 
 export default defineConfig({
-  plugins: [
-    nodeSettings(),
-    // ...
-  ],
+  plugins: [nodeSettings()],
 });
 ```
 
-Plugin options (all optional):
+**Next.js** (`next.config.mjs`):
 
-| Option       | Default                                 | Purpose                                                         |
-| ------------ | --------------------------------------- | --------------------------------------------------------------- |
-| `config`     | auto-discover                           | Path to `node-settings.config.{ts,js,...}`.                     |
-| `mode`       | Vite's `mode`                           | Overrides the `.env.<mode>` cascade selector.                   |
-| `envDir`     | Vite's `envDir` → `root` → `cwd`        | Directory holding `.env*` files.                                |
-| `appEnvKey`  | `APP_ENV`                               | Env var that selects the active perEnv branch.                  |
-| `failOnDev`  | `true`                                  | Set `false` to warn instead of throw during `vite serve`.       |
+```ts
+import { withNodeSettings } from "@changsik00/node-settings/next";
 
-`vite build` always aborts on validation failure. The plugin reuses
-the same loader your runtime code calls, so the contract you ship is
-exactly the one your build was gated on.
+export default await withNodeSettings({
+  reactStrictMode: true,
+});
+```
+
+`vite build` / `next build` always abort on validation failure.
+`vite serve` / `next dev` abort too unless you pass `failOnDev: false`.
+
+Both plugins accept the same shape of options: `config`, `mode`,
+`envDir`, `appEnvKey`, `failOnDev`. Vite and Next.js are *optional*
+peer deps — only projects that import the respective entry need them
+installed.
 
 ## Server / client env split
 

@@ -47,6 +47,9 @@ import {
 
 // Vite plugin — validates env at config-resolve time, fails build / dev fast
 import { nodeSettings } from "@changsik00/node-settings/vite";
+
+// Next.js plugin — validates env during next.config evaluation
+import { withNodeSettings } from "@changsik00/node-settings/next";
 ```
 
 CLI binary: `node-settings`
@@ -97,22 +100,31 @@ invoke it as `uses: Changsik00/node-settings@v1` with inputs
 `llms.txt` at the repo root follows the [llmstxt.org](https://llmstxt.org/)
 convention so other AI assistants can crawl the doc index directly.
 
-### Vite plugin (build-time validation)
+### Build-time validation plugins (Vite + Next.js)
 
 ```ts
+// vite.config.ts
 import { defineConfig } from "vite";
 import { nodeSettings } from "@changsik00/node-settings/vite";
-
-export default defineConfig({
-  plugins: [nodeSettings()],
-});
+export default defineConfig({ plugins: [nodeSettings()] });
 ```
 
-The plugin runs in `buildStart`, so `vite build` aborts before
-bundling if env validation fails. In dev (`vite serve`) it aborts too
-unless `failOnDev: false`. Options: `config`, `mode`, `envDir`,
-`appEnvKey`, `failOnDev`. Vite is an optional peer dep — install only
-in projects that use it.
+```ts
+// next.config.mjs
+import { withNodeSettings } from "@changsik00/node-settings/next";
+export default await withNodeSettings({ reactStrictMode: true });
+```
+
+Both plugins reuse the same loader the runtime code uses. They run
+*before* bundling — Vite in `buildStart`, Next.js during
+`next.config` evaluation. `vite build` / `next build` always throw
+on validation failure; `vite serve` / `next dev` throw too unless
+`failOnDev: false`. Options shape is identical: `config`, `mode`,
+`envDir`, `appEnvKey`, `failOnDev`. Vite and Next.js are *optional*
+peer deps — only consumers that import the respective entry need
+them installed. Next.js phase is read from `process.env.NEXT_PHASE`
+(`phase-production-build` / `phase-export` → fail; everything else
+respects `failOnDev`).
 
 ### Server / client env split (`defineClientEnv`)
 
@@ -385,6 +397,8 @@ src/
 
   vite/
     index.ts             # nodeSettings() Vite plugin
+  next/
+    index.ts             # withNodeSettings() Next.js plugin (HOF)
 ```
 
 ## Verification layers (running `pnpm verify`)

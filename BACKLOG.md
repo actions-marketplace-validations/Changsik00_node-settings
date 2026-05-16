@@ -49,9 +49,12 @@ thinking — feel free to re-rank during planning.
 - [x] ~~**Build-time validation plugin** for Vite~~ — shipped:
       `import { nodeSettings } from "@changsik00/node-settings/vite"`.
       Next.js / esbuild variants are follow-up.
-- [ ] **Build-time validation plugin** for Next.js + esbuild —
-      same idea as the Vite plugin, but for the other major
-      toolchains. _(medium)_
+- [x] ~~**Build-time validation plugin** for Next.js~~ — shipped:
+      `import { withNodeSettings } from "@changsik00/node-settings/next"`.
+      esbuild variant still open.
+- [ ] **Build-time validation plugin** for esbuild — round out the
+      "build-time plugin" claim to cover non-Vite, non-Next bundlers
+      (Remix esbuild config, custom esbuild-based pipelines). _(medium)_
 - [ ] **`generate tfvars`** — Terraform variable file template from
       the env schema, for IaC handoff. _(small)_
 - [ ] **`generate compose`** — `docker-compose.yml` `env_file` or
