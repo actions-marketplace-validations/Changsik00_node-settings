@@ -8,6 +8,7 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ## [Unreleased]
 
+## [0.11.1] — 2026-05-16
 ### Changed
 
 - **Releases now use npm Trusted Publishing (OIDC) + provenance.**
