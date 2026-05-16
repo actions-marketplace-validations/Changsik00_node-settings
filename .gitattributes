@@ -1,0 +1,9 @@
+* text=auto eol=lf
+
+# Snapshots are byte-compared by scripts/verify-api.mjs against
+# freshly-emitted .d.ts. Keep them LF so Windows checkouts don't
+# silently drift via autocrlf.
+api-surface/*.d.ts text eol=lf
+
+# Same idea for generator snapshots — diffed in tests.
+src/generators/__snapshots__/** text eol=lf

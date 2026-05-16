@@ -44,9 +44,12 @@ const HEADER = [
   "",
 ].join("\n");
 
-/** Strip line-noise (sourcemap URLs, trailing whitespace) before comparing. */
+/** Strip line-noise (sourcemap URLs, CRLF, trailing whitespace) before
+ *  comparing. tsc emits CRLF on Windows; committed snapshots are LF.
+ *  git autocrlf can also flip newlines on Windows checkouts. */
 function normalize(content) {
   return content
+    .replace(/\r\n/g, "\n")
     .replace(/^\/\/# sourceMappingURL=.*$/gm, "")
     .split("\n")
     .map((l) => l.replace(/\s+$/u, ""))
@@ -81,7 +84,7 @@ for (const { dts, ref } of TARGETS) {
       `missing reference ${ref}; bootstrap with: node scripts/verify-api.mjs --update`,
     );
   }
-  const expected = readFileSync(refPath, "utf8");
+  const expected = normalize(readFileSync(refPath, "utf8"));
   if (expected !== stored) {
     drifted += 1;
     const diff = simpleDiff(expected, stored);
