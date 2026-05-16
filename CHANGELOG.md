@@ -8,6 +8,25 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ## [Unreleased]
 
+### Added
+
+- **Migration guides** (`docs/migration/`) for moving onto this
+  library from the four most common neighbours: `from-t3-oss-env.md`
+  (Next.js + zod), `from-convict.md` (mature server config),
+  `from-node-config.md` (YAML/JSON file cascade), `from-dotenv-flow.md`
+  (`.env.<mode>` cascade with no validation). Each guide has a
+  before/after side-by-side, a feature-mapping table, a numbered
+  step-by-step, gotchas specific to that library, and a "what you
+  gain" summary. Indexed at `docs/migration/README.md`.
+- **Hybrid release workflow** (`release.yml`). Tag pushes now build,
+  verify, and create the GitHub Release page automatically; `npm
+  publish` stays manual until the Trusted Publishing OIDC handshake
+  is verified working (see BACKLOG.md "Trusted Publishing finalize").
+- **One-off OIDC debug workflow** (`oidc-debug.yml`,
+  `workflow_dispatch` only) that prints the GitHub Actions OIDC
+  token claims for the `npm:registry.npmjs.org` audience. Useful
+  when configuring Trusted Publishers and as a future reference.
+
 ## [0.11.1] — 2026-05-16
 
 ### Added

@@ -125,8 +125,10 @@ thinking — feel free to re-rank during planning.
       meaningful adoption. _(large)_
 - [ ] **More `<!-- doc-test:check -->` blocks** as docs evolve — at
       least the AGENTS.md "Common patterns" examples. _(small, ongoing)_
-- [ ] **Migration guides** for users coming from t3-oss/env,
-      convict, node-config, dotenv-flow. _(medium)_
+- [x] ~~**Migration guides** for users coming from t3-oss/env,~~
+      ~~convict, node-config, dotenv-flow.~~ Shipped: `docs/migration/`
+      with one before/after + feature-mapping + step-by-step guide
+      per library, plus a shared-principles index README.
 
 ## Project hygiene
 

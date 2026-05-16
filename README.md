@@ -346,6 +346,8 @@ Exit codes: `0` for clean / warnings-only, `1` on any error,
   every common platform, opt-in `presets.*` adapters, the
   `.env.<mode>` cascade.
 - **[Error codes](./docs/ERRORS.md)** — every `NodeSettingsError.code`.
+- **[Migration guides](./docs/migration/)** — recipes for moving
+  from t3-oss/env, convict, node-config, or dotenv-flow.
 - **[AGENTS.md](./AGENTS.md)** — context for AI coding assistants.
 - **[llms.txt](./llms.txt)** — [llmstxt.org](https://llmstxt.org/) doc index.
 - **[RELEASING.md](./RELEASING.md)** — tag-based release flow.

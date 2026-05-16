@@ -13,6 +13,7 @@ Designed for backend Node apps (ESM, Node >= 18). Built for teams that ship the 
 - [Configuration guide](https://github.com/Changsik00/node-settings/blob/main/docs/CONFIGURATION.md): file layouts (single / split / monorepo), the two "base" axes (`defaults` vs `extends`), monorepo composition, layering model, `todo()` sentinels, decision table for where each value belongs.
 - [Deployment guide](https://github.com/Changsik00/node-settings/blob/main/docs/DEPLOYMENT.md): Setting `APP_ENV` per platform (Docker, Compose, Kubernetes, GitHub Actions, Vercel, Heroku, AWS ECS / Lambda, Render / Railway / Fly), platform presets, `.env.<mode>` cascade, secret injection patterns (GitHub Actions secrets, Vault, AWS / GCP Secret Manager, External Secrets / Sealed Secrets, Doppler / Infisical / 1Password CLI, operator-supplied `.env.<mode>.local`).
 - [Error codes](https://github.com/Changsik00/node-settings/blob/main/docs/ERRORS.md): Full `NodeSettingsError.code` reference (definition-time + runtime).
+- [Migration guides](https://github.com/Changsik00/node-settings/tree/main/docs/migration): Recipes for moving from t3-oss/env, convict, node-config, or dotenv-flow. Each guide is before/after + feature mapping + step-by-step + gotchas.
 - [Releasing](https://github.com/Changsik00/node-settings/blob/main/RELEASING.md): Tag-based release flow (`pnpm release <semver>`).
 - [Backlog](https://github.com/Changsik00/node-settings/blob/main/BACKLOG.md): Tracked future work.
 
