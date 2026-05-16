@@ -8,6 +8,7 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-05-16
 ### Added
 
 - **`generate tfvars`** — Terraform `.tfvars` file from the schema.
