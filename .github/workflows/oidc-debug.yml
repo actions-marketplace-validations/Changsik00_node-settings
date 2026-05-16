@@ -1,0 +1,62 @@
+name: Debug OIDC claims (npm)
+
+# One-shot diagnostic. Requests an OIDC token for the
+# `npm:registry.npmjs.org` audience and prints the *claims* (the JWT
+# payload — not the signature, not a secret) so we can see exactly
+# what GitHub Actions sends to npm at publish time.
+#
+# Compare the printed values to the npm UI's Trusted Publisher entry
+# (https://www.npmjs.com/package/@env-kit/node-settings/access). Any
+# field that doesn't match exactly is the mismatch.
+#
+# Trigger manually:
+#   gh workflow run oidc-debug.yml
+#
+# This workflow does NOT publish, does NOT need npm auth, does NOT
+# read any secrets. Safe to leave in the repo; remove after debugging.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  inspect-oidc:
+    name: print OIDC claims for npm audience
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const audience = 'npm:registry.npmjs.org';
+            const token = await core.getIDToken(audience);
+            // A JWT is three segments: header.payload.signature.
+            // Only the payload (claims) is needed for matching.
+            const payload = token.split('.')[1];
+            const decoded = JSON.parse(
+              Buffer.from(payload, 'base64url').toString('utf8'),
+            );
+
+            core.info('--- full claims (audience: ' + audience + ') ---');
+            core.info(JSON.stringify(decoded, null, 2));
+
+            core.info('');
+            core.info('--- fields npm Trusted Publisher matches on ---');
+            core.info(`repository:         ${decoded.repository}`);
+            core.info(`repository_owner:   ${decoded.repository_owner}`);
+            core.info(`workflow:           ${decoded.workflow}`);
+            core.info(`workflow_ref:       ${decoded.workflow_ref}`);
+            core.info(`job_workflow_ref:   ${decoded.job_workflow_ref}`);
+            core.info(`ref:                ${decoded.ref}`);
+            core.info(`event_name:         ${decoded.event_name}`);
+            core.info(`environment:        ${decoded.environment ?? '(none)'}`);
+            core.info(`sub:                ${decoded.sub}`);
+
+            core.info('');
+            core.info('--- check against npm UI Trusted Publisher entry ---');
+            core.info('Repository owner: must match repository_owner above EXACTLY (case sensitive)');
+            core.info('Repository name:  must be the second segment of repository (after the slash)');
+            core.info('Workflow filename: npm extracts the basename of workflow_ref before the @');
+            core.info('Environment:      must match the environment claim (or both must be empty)');
