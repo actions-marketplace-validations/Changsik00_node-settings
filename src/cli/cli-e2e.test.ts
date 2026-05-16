@@ -339,7 +339,8 @@ describe("CLI e2e — --format=json", () => {
     const doc = JSON.parse(capture.stdout.join(""));
     expect(doc.ok).toBe(true);
     expect(doc.source).toBe(envFile);
-    expect(doc.config).toContain("sample/settings.ts");
+    // Forward slash on POSIX, backslash on Windows — match both.
+    expect(doc.config).toMatch(/sample[/\\]settings\.ts$/);
   });
 
   it("validate --format=json emits a structured error result on failure", async () => {
@@ -386,7 +387,8 @@ describe("CLI e2e — --format=json", () => {
     ]);
     expect(code).toBe(0);
     const doc = JSON.parse(capture.stdout.join(""));
-    expect(doc.config).toContain("sample/settings.ts");
+    // Forward slash on POSIX, backslash on Windows — match both.
+    expect(doc.config).toMatch(/sample[/\\]settings\.ts$/);
     const prod = doc.branches.find(
       (b: { env: string }) => b.env === "prod",
     );
@@ -466,7 +468,7 @@ describe("CLI e2e — --workspace", () => {
     mkdirSync(join(wsRoot, "packages", "alpha"), { recursive: true });
     mkdirSync(join(wsRoot, "packages", "beta"), { recursive: true });
     const pkgConfig = `
-import { defineSettings, todo } from "${originalCwd}/src/index.ts";
+import { defineSettings, todo } from "${originalCwd.replace(/\\/g, "/")}/src/index.ts";
 import { z } from "zod";
 
 const settings = defineSettings({
