@@ -85,7 +85,7 @@ thinking — feel free to re-rank during planning.
       use a Node-native tarball reader instead of `tar -tzf`. _(small)_
 - [x] ~~**Real downstream consumer repo** — a tiny app that depends~~
       ~~on the published version and runs in our CI matrix.~~ Shipped:
-      `examples/consumer/` + `.github/workflows/consumer.yml`. Daily
+      `sample/consumer/` + `.github/workflows/consumer.yml`. Daily
       cron + push/PR trigger. Caught one finding worth following up
       on: `AnySettingsLoader` upper bound has a variance issue —
       specific loaders satisfy the `extends` use site through

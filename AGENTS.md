@@ -435,7 +435,7 @@ CI runs all of these on every push / PR across Node 18 / 20 / 22.
 `prepublishOnly` runs verify:dist + verify:api + verify:pack so a
 broken bundle cannot ship.
 
-**Layer 8 — external consumer smoke** (`examples/consumer/`): a
+**Layer 8 — external consumer smoke** (`sample/consumer/`): a
 private package that installs `@env-kit/node-settings` from the npm
 registry and compiles a small app under `strict + skipLibCheck:
 false`, then runs a Node runtime check. Lives in its own workflow

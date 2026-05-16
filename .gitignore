@@ -12,6 +12,10 @@ coverage
 !.env.*.example
 !.env.*.sample
 !.env.sample
+# The canonical worked example deliberately commits its env files so
+# users can read them directly. Exempt sample/env/ from the catch-all.
+!sample/env/.env
+!sample/env/.env.*
 *.log
 logs
 .idea

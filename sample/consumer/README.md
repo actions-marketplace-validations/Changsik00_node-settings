@@ -24,7 +24,7 @@ push.
 ## Local use
 
 ```bash
-cd examples/consumer
+cd sample/consumer
 pnpm install          # pulls @env-kit/node-settings from registry
 pnpm check            # tsc --noEmit (strict + skipLibCheck: false)
 pnpm smoke            # tsx app.ts (runtime check across Node 18+)
