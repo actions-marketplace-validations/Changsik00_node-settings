@@ -8,8 +8,41 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ## [Unreleased]
 
+### Added
+
+- **`CONTRIBUTING.md`** with local setup, the verify-chain mapping
+  (each of the eight layers and what kind of regression it catches),
+  conventions (ESM-with-.js-imports, no emojis, no AI-attribution,
+  English-only), commit-message style, and the "adding a feature"
+  checklist (issue first → tests + AGENTS update + CHANGELOG entry).
+- **Windows in CI** — `ci.yml` matrix now runs ubuntu + macos +
+  windows × Node 18/20/22 (9 jobs). Two scripts had to become
+  cross-platform first:
+    - `verify-pack.mjs` now lists tarball contents via a tiny
+      in-process gzip + tar parser (~30 lines) instead of
+      `tar -tzf` (which behaves differently on Windows).
+    - `verify:sample` moved into `scripts/verify-sample.mjs` (Node
+      `spawnSync` of the built CLI binary + structural assertions
+      on stdout) so it no longer relies on `> /dev/null`.
+    - `clean` script rewritten in Node so it works on Windows cmd.
+
 ### Changed
 
+- **Test coverage tightened** on `validate-options.ts` and
+  `check-per-env.ts`. Added 18 targeted tests covering each
+  remaining branch (ZodNativeEnum perEnv keys, ZodOptional /
+  ZodNullable wrapper unwrapping on envKey, scanConfig recursion
+  into nested objects and arrays, empty-string warnings, custom
+  placeholder patterns, missing-branch error, secret-in-config
+  lint including nested array paths, `lint: false` opt-out,
+  custom secretKeyPatterns).
+- **Coverage provider switched from `v8` to `istanbul`**
+  (`@vitest/coverage-istanbul`). v8 was under-reporting when the
+  same module was loaded both directly and transitively (different
+  per-file numbers when running in isolation vs. as part of the
+  full suite). istanbul aggregates correctly across import paths.
+  Full-suite coverage is now 87%+ (was reporting 82% on v8 from
+  the same tests).
 - **`sample/` restructured to feel like one real project.** The
   `.env`, `.env.local`, `.env.dev`, `.env.stage`, `.env.prod` files
   now sit at the sample's project root (where a real app would have

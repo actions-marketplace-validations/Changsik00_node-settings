@@ -67,7 +67,7 @@
   },
   "scripts": {
     "build": "tsc -b tsconfig.build.json",
-    "clean": "rm -rf dist *.tsbuildinfo",
+    "clean": "node -e \"const fs=require('node:fs'); fs.rmSync('dist',{recursive:true,force:true}); for (const f of fs.readdirSync('.')) if (f.endsWith('.tsbuildinfo')) fs.rmSync(f);\"",
     "dev": "tsc -b tsconfig.build.json --watch",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -75,7 +75,7 @@
     "typecheck": "tsc --noEmit",
     "verify:dist": "node scripts/verify-dist.mjs",
     "verify:pack": "node scripts/verify-pack.mjs",
-    "verify:sample": "node dist/cli/bin.js inspect --config sample/settings.ts > /dev/null && node dist/cli/bin.js inspect --config sample/settings.ts --env=prod > /dev/null",
+    "verify:sample": "node scripts/verify-sample.mjs",
     "verify:api": "node scripts/verify-api.mjs",
     "verify:docs": "node scripts/verify-docs.mjs",
     "verify": "pnpm run typecheck && pnpm run test:coverage && pnpm run build && pnpm run verify:dist && pnpm run verify:sample && pnpm run verify:api && pnpm run verify:docs && pnpm run verify:pack",
@@ -103,6 +103,7 @@
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/picomatch": "^4.0.3",
+    "@vitest/coverage-istanbul": "^2.1.9",
     "@vitest/coverage-v8": "^2.1.9",
     "next": "^14.2.35",
     "typescript": "^5.6.0",

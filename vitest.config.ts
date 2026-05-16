@@ -5,7 +5,11 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
     environment: "node",
     coverage: {
-      provider: "v8",
+      // istanbul is slower than v8 but reports per-file coverage
+      // correctly when the same module is loaded via multiple
+      // import paths (direct + transitive). v8's tracking aggregates
+      // those incorrectly and under-reports.
+      provider: "istanbul",
       reporter: ["text", "lcov", "json", "html"],
       reportsDirectory: "./coverage",
       include: ["src/**/*.ts"],

@@ -161,4 +161,93 @@ describe("defensive validations at defineSettings time", () => {
       expect((err as NodeSettingsError).code).toBe("OVERRIDE_JSON_PARSE");
     }
   });
+
+  describe("envKey type unwrapping", () => {
+    it("accepts a plain ZodString envKey", () => {
+      const settings = defineSettings({
+        envSchema: z.object({
+          APP_ENV: z.string().default("local"),
+          DB_HOST: z.string(),
+        }),
+        envKey: "APP_ENV",
+        defaults: {},
+        perEnv: { local: { x: 1 }, prod: { x: 2 } },
+        build: (env, config) => ({ host: env.DB_HOST, x: config.x }),
+      });
+      const cfg = settings({ APP_ENV: "local", DB_HOST: "h" });
+      expect(cfg.x).toBe(1);
+    });
+
+    it("unwraps ZodOptional around envKey", () => {
+      const settings = defineSettings({
+        envSchema: z.object({
+          APP_ENV: z.enum(["local", "prod"]).optional().default("local"),
+          DB_HOST: z.string(),
+        }),
+        envKey: "APP_ENV",
+        defaults: {},
+        perEnv: { local: { x: 1 }, prod: { x: 2 } },
+        build: (env, config) => ({ host: env.DB_HOST, x: config.x }),
+      });
+      expect(settings({ DB_HOST: "h" }).x).toBe(1);
+    });
+
+    it("unwraps ZodNullable around envKey", () => {
+      // Nullable wraps the enum so unwrapWrappers must peel it off.
+      const settings = defineSettings({
+        envSchema: z.object({
+          APP_ENV: z.enum(["local"]).nullable().default("local" as never),
+          DB_HOST: z.string(),
+        }),
+        envKey: "APP_ENV",
+        defaults: {},
+        perEnv: { local: {} },
+        build: (env) => ({ host: env.DB_HOST }),
+      });
+      expect(settings({ DB_HOST: "h" }).host).toBe("h");
+    });
+  });
+
+  describe("ZodNativeEnum envKey", () => {
+    enum AppEnv {
+      Local = "local",
+      Prod = "prod",
+    }
+
+    it("accepts a ZodNativeEnum envKey + matching perEnv branches", () => {
+      const settings = defineSettings({
+        envSchema: z.object({
+          APP_ENV: z.nativeEnum(AppEnv).default(AppEnv.Local),
+          DB_HOST: z.string(),
+        }),
+        envKey: "APP_ENV",
+        defaults: { x: 0 },
+        perEnv: { local: { x: 1 }, prod: { x: 2 } },
+        build: (env, config) => ({ host: env.DB_HOST, x: config.x }),
+      });
+      expect(settings({ DB_HOST: "h" }).x).toBe(1);
+    });
+
+    it("rejects perEnv branch not in the ZodNativeEnum values", () => {
+      try {
+        defineSettings({
+          envSchema: z.object({
+            APP_ENV: z.nativeEnum(AppEnv).default(AppEnv.Local),
+          }),
+          envKey: "APP_ENV",
+          defaults: {},
+          // intentional typo: not a value of AppEnv
+          perEnv: { local: {}, staging: {} },
+          build: () => ({}),
+        });
+        throw new Error("expected throw");
+      } catch (err) {
+        expect((err as NodeSettingsError).code).toBe(
+          "PER_ENV_KEY_NOT_IN_ENUM",
+        );
+        expect((err as NodeSettingsError).message).toMatch(/native enum/);
+        expect((err as NodeSettingsError).message).toMatch(/staging/);
+      }
+    });
+  });
 });

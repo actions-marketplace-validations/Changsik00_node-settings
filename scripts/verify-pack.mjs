@@ -11,6 +11,8 @@
  * fields and `.npmignore` rules before they ship.
  */
 import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
 import {
   mkdtempSync,
   readdirSync,
@@ -22,6 +24,42 @@ import { dirname, join, resolve as resolvePath } from "node:path";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolvePath(HERE, "..");
+
+/**
+ * List file paths in a .tgz tarball using pure Node (zlib + manual
+ * tar header parsing). Replaces a `tar -tzf` subprocess call so the
+ * script works on Windows runners where `tar` flag behaviour varies.
+ *
+ * Tar format (USTAR): each entry is a 512-byte header block followed
+ * by data blocks padded to 512 bytes. Header layout used here:
+ *   - bytes   0..99 : filename (null-terminated)
+ *   - bytes 124..135: octal size (null-terminated)
+ *   - bytes 156    : type flag ('0' / '\\0' for normal file, '5' for dir)
+ * End-of-archive is two consecutive zero-filled blocks.
+ */
+function listTarballFiles(tgzPath) {
+  const buf = gunzipSync(readFileSync(tgzPath));
+  const files = [];
+  let offset = 0;
+  while (offset + 512 <= buf.length) {
+    const header = buf.subarray(offset, offset + 512);
+    // End of archive marker (all zeros).
+    if (header.every((b) => b === 0)) break;
+    const nameRaw = header.subarray(0, 100).toString("utf8");
+    const name = nameRaw.replace(/\0.*$/, "");
+    const sizeRaw = header.subarray(124, 136).toString("utf8").trim();
+    const size = parseInt(sizeRaw.replace(/\0.*$/, ""), 8) || 0;
+    const typeFlag = String.fromCharCode(header[156]);
+    // Skip directories ('5') and the special "pax" / "longlink"
+    // entries that some tar implementations emit; we only want files.
+    if (name && typeFlag !== "5" && typeFlag !== "L" && typeFlag !== "x") {
+      files.push(name);
+    }
+    // Advance past header + data (rounded up to 512-byte block).
+    offset += 512 + Math.ceil(size / 512) * 512;
+  }
+  return files.sort();
+}
 
 const REQUIRED = [
   "package/package.json",
@@ -86,12 +124,7 @@ try {
     console.error("FAIL  pnpm pack produced no .tgz");
     process.exit(1);
   }
-  const list = execSync(`tar -tzf ${join(out, tgz)}`, { encoding: "utf8" })
-    .split("\n")
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .filter((p) => !p.endsWith("/"))
-    .sort();
+  const list = listTarballFiles(join(out, tgz));
 
   const missing = REQUIRED.filter((req) => !list.includes(req));
   if (missing.length > 0) {

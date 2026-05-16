@@ -93,8 +93,11 @@ thinking — feel free to re-rank during planning.
 - [ ] **Mutation testing (Stryker)** — verify that the unit tests
       actually catch broken implementations. Probably wired into a
       nightly schedule rather than per-PR. _(medium)_
-- [ ] **Windows in CI** — would require `scripts/verify-pack.mjs` to
-      use a Node-native tarball reader instead of `tar -tzf`. _(small)_
+- [x] ~~**Windows in CI**~~ — Shipped: CI matrix includes
+      windows-latest. verify-pack uses an in-process gzip+tar
+      parser; verify:sample is a Node script that captures stdout
+      via spawnSync; `clean` is Node too. No subprocess-shell
+      differences left in the verify path.
 - [x] ~~**Real downstream consumer repo** — a tiny app that depends~~
       ~~on the published version and runs in our CI matrix.~~ Built,
       ran once, then retired. Caught one useful finding before
@@ -102,9 +105,11 @@ thinking — feel free to re-rank during planning.
       ongoing value didn't justify the noise of a separate
       sample-but-not-sample directory. Sample directory now reads
       as a single project.
-- [ ] **Coverage tighten** — `validate-options.ts` and
-      `check-per-env.ts` have lower per-file coverage; targeted tests
-      to bring them >85%. _(small)_
+- [x] ~~**Coverage tighten**~~ — Shipped: 18 targeted tests across
+      `validate-options.ts` and `check-per-env.ts`; full-suite
+      coverage now 87%+ (post-switch to istanbul provider, which
+      aggregates correctly across import paths where v8 was
+      under-reporting).
 - [ ] **AnySettingsLoader variance** — `AnySettingsLoader` is meant
       as the "any loader" upper bound for `extends` arrays. Its
       `build: (env: { [x: string]: any }, config: object) => object`
@@ -137,6 +142,6 @@ thinking — feel free to re-rank during planning.
 - [ ] **Public roadmap** — surface this BACKLOG.md content as GitHub
       issues with labels (`type:feature`, `area:ci`, etc.) once
       the repo has external contributors. _(small)_
-- [ ] **Contributor guide** (`CONTRIBUTING.md`) — local setup,
-      how to run `pnpm verify`, how to land a doc-only PR, how to
-      cut a release. _(small)_
+- [x] ~~**Contributor guide** (`CONTRIBUTING.md`)~~ — Shipped:
+      covers local setup, the verify-chain mapping, conventions,
+      doc-only PRs, releasing, and the BACKLOG-as-roadmap pointer.
