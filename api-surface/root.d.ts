@@ -2,7 +2,7 @@
 // Diff is intentional: regenerate via `node scripts/verify-api.mjs --update`
 // after a deliberate public-API change.
 /**
- * @changsik00/node-settings — Schema-first settings for Node apps.
+ * @env-kit/node-settings — Schema-first settings for Node apps.
  *
  * Two halves:
  *

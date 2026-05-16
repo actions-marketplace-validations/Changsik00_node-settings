@@ -10,7 +10,7 @@
  * copy-paste catches drift on the *load-bearing* examples without
  * fighting every comment-laced snippet.
  *
- * Imports inside blocks that reference `"@changsik00/node-settings"`
+ * Imports inside blocks that reference `"@env-kit/node-settings"`
  * (or its `./generators` subpath) are rewritten to relative imports
  * into `../src/` so the block compiles inside this repo.
  *
@@ -117,11 +117,11 @@ function rewriteImports(code) {
   // than `dist/.js` so the script doesn't require a prior `pnpm build`.
   return code
     .replace(
-      /(["'])@changsik00\/node-settings\/generators\1/g,
+      /(["'])@env-kit\/node-settings\/generators\1/g,
       `"${resolvePath(ROOT, "src/generators/index.ts").replace(/\\/g, "/")}"`,
     )
     .replace(
-      /(["'])@changsik00\/node-settings\1/g,
+      /(["'])@env-kit\/node-settings\1/g,
       `"${resolvePath(ROOT, "src/index.ts").replace(/\\/g, "/")}"`,
     );
 }

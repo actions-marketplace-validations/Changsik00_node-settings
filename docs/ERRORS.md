@@ -1,12 +1,12 @@
 # Error codes
 
-Every error thrown by `@changsik00/node-settings` is a
+Every error thrown by `@env-kit/node-settings` is a
 `NodeSettingsError` carrying a stable `code` plus an optional `hint`.
 Match on `.code`, never on `.message`, which can evolve across minor
 versions.
 
 ```ts
-import { NodeSettingsError } from "@changsik00/node-settings";
+import { NodeSettingsError } from "@env-kit/node-settings";
 
 try {
   const cfg = settings(process.env);

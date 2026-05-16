@@ -317,7 +317,7 @@ For platforms that expose their own deployment-environment signal
 your `APP_ENV` value.
 
 ```ts
-import { inferAppEnv, presets, loadDotenvCascade } from "@changsik00/node-settings";
+import { inferAppEnv, presets, loadDotenvCascade } from "@env-kit/node-settings";
 
 // Standalone — explicit resolution
 const APP_ENV = inferAppEnv({
@@ -385,7 +385,7 @@ process.env                 ← always wins
 Wire it up at boot:
 
 ```ts
-import { loadDotenvCascade } from "@changsik00/node-settings";
+import { loadDotenvCascade } from "@env-kit/node-settings";
 import settings from "./settings.config.js";
 
 const { env, mode, loaded } = loadDotenvCascade();

@@ -1,16 +1,16 @@
 <div align="center">
 
-# @changsik00/node-settings
+# @env-kit/node-settings
 
 **Schema-first settings for Node apps.**
 One zod schema → typed runtime config + `.env.example` + Markdown docs + Kubernetes manifests + a CLI that gates deploys in CI.
 
-[![npm version](https://img.shields.io/npm/v/@changsik00/node-settings?color=cb3837&label=npm&logo=npm)](https://www.npmjs.com/package/@changsik00/node-settings)
+[![npm version](https://img.shields.io/npm/v/@env-kit/node-settings?color=cb3837&label=npm&logo=npm)](https://www.npmjs.com/package/@env-kit/node-settings)
 [![CI](https://github.com/Changsik00/node-settings/actions/workflows/ci.yml/badge.svg)](https://github.com/Changsik00/node-settings/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Types: TypeScript](https://img.shields.io/badge/types-TypeScript-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Install size](https://packagephobia.com/badge?p=@changsik00/node-settings)](https://packagephobia.com/result?p=@changsik00/node-settings)
+[![Install size](https://packagephobia.com/badge?p=@env-kit/node-settings)](https://packagephobia.com/result?p=@env-kit/node-settings)
 
 [**Sample**](./sample) · [**Configuration**](./docs/CONFIGURATION.md) · [**Deployment**](./docs/DEPLOYMENT.md) · [**Errors**](./docs/ERRORS.md)
 
@@ -21,13 +21,13 @@ One zod schema → typed runtime config + `.env.example` + Markdown docs + Kuber
 ## TL;DR
 
 ```bash
-pnpm add @changsik00/node-settings zod
+pnpm add @env-kit/node-settings zod
 ```
 
 <!-- doc-test:check -->
 ```ts
 import { z } from "zod";
-import { defineSettings } from "@changsik00/node-settings";
+import { defineSettings } from "@env-kit/node-settings";
 
 const settings = defineSettings({
   envSchema: z.object({
@@ -177,7 +177,7 @@ is the contract that ships.
 
 ```ts
 import { defineConfig } from "vite";
-import { nodeSettings } from "@changsik00/node-settings/vite";
+import { nodeSettings } from "@env-kit/node-settings/vite";
 
 export default defineConfig({
   plugins: [nodeSettings()],
@@ -187,7 +187,7 @@ export default defineConfig({
 **Next.js** (`next.config.mjs`):
 
 ```ts
-import { withNodeSettings } from "@changsik00/node-settings/next";
+import { withNodeSettings } from "@env-kit/node-settings/next";
 
 export default await withNodeSettings({
   reactStrictMode: true,
@@ -210,7 +210,7 @@ is a separate loader for the public, prefix-gated half of your env:
 ```ts
 // settings.client.ts
 import { z } from "zod";
-import { defineClientEnv } from "@changsik00/node-settings";
+import { defineClientEnv } from "@env-kit/node-settings";
 
 export const clientEnv = defineClientEnv({
   prefix: "VITE_",

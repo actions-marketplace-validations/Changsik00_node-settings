@@ -48,7 +48,7 @@ export interface NodeSettingsNextOptions {
  * @example
  * ```ts
  * // next.config.mjs
- * import { withNodeSettings } from "@changsik00/node-settings/next";
+ * import { withNodeSettings } from "@env-kit/node-settings/next";
  *
  * export default await withNodeSettings({
  *   reactStrictMode: true,
@@ -58,7 +58,7 @@ export interface NodeSettingsNextOptions {
  * @example CJS
  * ```js
  * // next.config.js
- * const { withNodeSettings } = require("@changsik00/node-settings/next");
+ * const { withNodeSettings } = require("@env-kit/node-settings/next");
  *
  * // Next.js supports a Promise<NextConfig> module.exports.
  * module.exports = withNodeSettings({ reactStrictMode: true });

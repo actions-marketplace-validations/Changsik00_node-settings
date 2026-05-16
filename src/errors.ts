@@ -1,5 +1,5 @@
 /**
- * Stable error codes thrown by `@changsik00/node-settings`. Use these
+ * Stable error codes thrown by `@env-kit/node-settings`. Use these
  * for programmatic handling rather than matching on `message`, which
  * may evolve across minor versions.
  */

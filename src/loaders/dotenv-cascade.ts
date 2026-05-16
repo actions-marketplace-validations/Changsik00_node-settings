@@ -72,7 +72,7 @@ export interface DotenvCascadeResult {
  *
  * @example
  * ```ts
- * import { defineSettings, loadDotenvCascade } from "@changsik00/node-settings";
+ * import { defineSettings, loadDotenvCascade } from "@env-kit/node-settings";
  *
  * const settings = defineSettings({ ... });
  * const { env, mode } = loadDotenvCascade();

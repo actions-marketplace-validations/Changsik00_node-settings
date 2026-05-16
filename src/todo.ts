@@ -8,7 +8,7 @@
  *
  * @example
  * ```ts
- * import { defineSettings, todo } from "@changsik00/node-settings";
+ * import { defineSettings, todo } from "@env-kit/node-settings";
  *
  * defineSettings({
  *   envSchema, envKey: "APP_ENV",
@@ -35,7 +35,7 @@
  * Using `Symbol.for(...)` keeps the marker stable across module
  * boundaries (e.g. mixed CJS / ESM situations).
  */
-export const TODO_SYMBOL = Symbol.for("@changsik00/node-settings:todo");
+export const TODO_SYMBOL = Symbol.for("@env-kit/node-settings:todo");
 
 /** Runtime shape of a todo sentinel. */
 export interface TodoSentinel {

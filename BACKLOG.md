@@ -28,7 +28,7 @@ thinking — feel free to re-rank during planning.
 
 ## AI ergonomics
 
-- [ ] **MCP server** (`@changsik00/node-settings-mcp`) — Model Context
+- [ ] **MCP server** (`@env-kit/node-settings-mcp`) — Model Context
       Protocol server exposing `validate` / `check` / `inspect` /
       `generate` to AI agents so they can audit a project's env
       contract directly. _(medium)_
@@ -47,10 +47,10 @@ thinking — feel free to re-rank during planning.
       package root. Prefix enforced at definition time;
       non-prefixed keys filtered at runtime.
 - [x] ~~**Build-time validation plugin** for Vite~~ — shipped:
-      `import { nodeSettings } from "@changsik00/node-settings/vite"`.
+      `import { nodeSettings } from "@env-kit/node-settings/vite"`.
       Next.js / esbuild variants are follow-up.
 - [x] ~~**Build-time validation plugin** for Next.js~~ — shipped:
-      `import { withNodeSettings } from "@changsik00/node-settings/next"`.
+      `import { withNodeSettings } from "@env-kit/node-settings/next"`.
       esbuild variant still open.
 - [ ] **Build-time validation plugin** for esbuild — round out the
       "build-time plugin" claim to cover non-Vite, non-Next bundlers

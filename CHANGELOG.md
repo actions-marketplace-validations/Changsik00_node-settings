@@ -22,10 +22,10 @@ under `[Unreleased]` and are promoted to a versioned section when
   the host shell / `.env`); `--style env-file` yields a flat
   `KEY=VALUE` file for `env_file:` references. `--name` overrides
   the service name (default `app`).
-- Both generators are exported from `@changsik00/node-settings/generators`
+- Both generators are exported from `@env-kit/node-settings/generators`
   (`generateTfvars`, `generateComposeFragment`) for programmatic use.
 - **Next.js plugin** — `import { withNodeSettings } from
-  "@changsik00/node-settings/next"`. Wraps the user's `next.config`
+  "@env-kit/node-settings/next"`. Wraps the user's `next.config`
   as `withNodeSettings(nextConfig, options?)` and runs env
   validation during config evaluation, *before* Webpack / Turbopack
   starts. `next build` and `next export` always abort on validation
@@ -60,7 +60,7 @@ under `[Unreleased]` and are promoted to a versioned section when
   `defineSettings` (which stays server-only) — the prefix is your
   compile-time *and* runtime firewall.
 - **Vite plugin** — `import { nodeSettings } from
-  "@changsik00/node-settings/vite"`. Validates env at config-resolve
+  "@env-kit/node-settings/vite"`. Validates env at config-resolve
   time so `vite build` aborts before bundling on bad env, and the
   dev server refuses to start (override with `failOnDev: false`).
   Reuses the same loader your runtime code calls — the contract you
@@ -84,7 +84,7 @@ under `[Unreleased]` and are promoted to a versioned section when
   `config`). `todo()` sentinels serialise natively as
   `{ "$todo": "reason" }` via `Symbol.toPrimitive`-style `toJSON`.
 - **JSON Schema generator.** `generateJsonSchema(envFields, options?)`
-  exported from `@changsik00/node-settings/generators`. CLI:
+  exported from `@env-kit/node-settings/generators`. CLI:
   `node-settings generate json-schema [--out file.json] [--title s]
   [--id url] [--description s]`. Produces a Draft 2020-12 schema with
   `format: "password"` + `x-secret: true` on secret fields,
@@ -346,7 +346,7 @@ contains it can be loaded" in a way the loader, the deep-merge, the
 - **`todo(reason?: string): never`** — exported from the package
   root. Returns `never` so the result is assignable to any field
   type; at runtime returns a sentinel object marked with
-  `Symbol.for("@changsik00/node-settings:todo")`.
+  `Symbol.for("@env-kit/node-settings:todo")`.
 - **`isTodo(value): value is TodoSentinel`** and
   **`findTodos(value): { path, reason }[]`** helpers.
 - **`deepMerge` skips sentinels.** A sentinel is opaque — child
@@ -525,7 +525,7 @@ project root and have them load in the right order.
   with the loader's `envKey` (e.g. `APP_ENV`) pre-filled and a comment
   block summarising the layered config that branch resolves to.
 - **`generatePerEnvExamples(loader, options?)`** — programmatic helper
-  exported from `@changsik00/node-settings/generators`. Returns a
+  exported from `@env-kit/node-settings/generators`. Returns a
   `Record<envName, string>` of generated `.env` contents.
 - **`generateEnvExample(fields, { values, ... })`** — the existing
   helper now accepts a `values` map for pre-filling specific keys.

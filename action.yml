@@ -1,4 +1,4 @@
-name: '@changsik00/node-settings'
+name: '@env-kit/node-settings'
 description: 'Run node-settings CLI commands (validate / check / inspect / generate) against your settings config.'
 author: 'Changsik00'
 branding:
@@ -17,7 +17,7 @@ inputs:
     required: false
     default: ''
   version:
-    description: 'npm version of @changsik00/node-settings to run via npx. Defaults to the latest published.'
+    description: 'npm version of @env-kit/node-settings to run via npx. Defaults to the latest published.'
     required: false
     default: 'latest'
   node-version:
@@ -47,4 +47,4 @@ runs:
           config_flag="--config $NS_CONFIG"
         fi
         # shellcheck disable=SC2086
-        npx --yes "@changsik00/node-settings@${NS_VERSION}" $NS_COMMAND $config_flag $NS_ARGS
+        npx --yes "@env-kit/node-settings@${NS_VERSION}" $NS_COMMAND $config_flag $NS_ARGS

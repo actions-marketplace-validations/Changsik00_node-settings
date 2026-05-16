@@ -172,7 +172,7 @@ export interface SettingsLoader<
  * @example
  * ```ts
  * import { z } from 'zod';
- * import { defineSettings } from '@changsik00/node-settings';
+ * import { defineSettings } from '@env-kit/node-settings';
  *
  * export const settings = defineSettings({
  *   envSchema: z.object({

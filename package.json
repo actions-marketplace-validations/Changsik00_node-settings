@@ -1,5 +1,5 @@
 {
-  "name": "@changsik00/node-settings",
+  "name": "@env-kit/node-settings",
   "version": "0.10.0",
   "description": "Schema-first settings for Node apps: zod env validation + per-env layering + .env.example / Markdown docs / Kubernetes manifest generation, with a CLI for CI/CD validation.",
   "keywords": [

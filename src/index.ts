@@ -1,5 +1,5 @@
 /**
- * @changsik00/node-settings — Schema-first settings for Node apps.
+ * @env-kit/node-settings — Schema-first settings for Node apps.
  *
  * Two halves:
  *

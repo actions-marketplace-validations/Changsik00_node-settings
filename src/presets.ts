@@ -6,7 +6,7 @@
  * automatically; users compose presets explicitly:
  *
  * ```ts
- * import { inferAppEnv, presets } from "@changsik00/node-settings";
+ * import { inferAppEnv, presets } from "@env-kit/node-settings";
  * const APP_ENV = inferAppEnv({
  *   presets: [presets.vercel(), presets.githubActions({ branchToMode: { main: "prod" } })],
  * });

@@ -39,7 +39,7 @@ Everything in one `settings.config.ts`. Best for small/medium apps.
 <!-- doc-test:check -->
 ```ts
 import { z } from "zod";
-import { defineSettings } from "@changsik00/node-settings";
+import { defineSettings } from "@env-kit/node-settings";
 
 export default defineSettings({
   envSchema: z.object({
@@ -97,7 +97,7 @@ packages/
 ```ts
 // packages/shared/settings.base.ts
 import { z } from "zod";
-import { defineSettings } from "@changsik00/node-settings";
+import { defineSettings } from "@env-kit/node-settings";
 
 export const base = defineSettings({
   envSchema: z.object({
@@ -123,7 +123,7 @@ export const base = defineSettings({
 ```ts
 // packages/content-api/settings.config.ts
 import { z } from "zod";
-import { defineSettings } from "@changsik00/node-settings";
+import { defineSettings } from "@env-kit/node-settings";
 import { base } from "../shared/settings.base.js";
 
 export default defineSettings({
@@ -188,7 +188,7 @@ Stop markers: `.git`, `pnpm-workspace.yaml`, `lerna.json`, `turbo.json`,
 If you compose `perEnv` outside of `defineSettings`:
 
 ```ts
-import { mergePerEnv } from "@changsik00/node-settings";
+import { mergePerEnv } from "@env-kit/node-settings";
 
 const perEnv = mergePerEnv(basePerEnv, {
   local: { bucket: "local-content" },
@@ -314,7 +314,7 @@ the placeholders with `todo(reason)`. The loader scans the final
 config before calling `build()` and throws if any sentinel survives.
 
 ```ts
-import { defineSettings, todo } from "@changsik00/node-settings";
+import { defineSettings, todo } from "@env-kit/node-settings";
 
 defineSettings({
   envSchema,

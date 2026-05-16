@@ -5,7 +5,7 @@ with this codebase. Humans should read [README.md](./README.md) first.
 
 ## What this package is
 
-`@changsik00/node-settings` — a schema-first settings library for Node
+`@env-kit/node-settings` — a schema-first settings library for Node
 apps. One `z.object({...})` schema is the source of truth for:
 
 - typed runtime config (validates `process.env`, layers per-env config,
@@ -36,20 +36,20 @@ import {
   loadDotenvFile,
   checkPerEnvCompleteness,
   NodeSettingsError,
-} from "@changsik00/node-settings";
+} from "@env-kit/node-settings";
 
 // Generators (used by the CLI; importable directly for custom scripts)
 import {
   generateEnvExample,
   generateMarkdownDocs,
   generateK8sManifests,
-} from "@changsik00/node-settings/generators";
+} from "@env-kit/node-settings/generators";
 
 // Vite plugin — validates env at config-resolve time, fails build / dev fast
-import { nodeSettings } from "@changsik00/node-settings/vite";
+import { nodeSettings } from "@env-kit/node-settings/vite";
 
 // Next.js plugin — validates env during next.config evaluation
-import { withNodeSettings } from "@changsik00/node-settings/next";
+import { withNodeSettings } from "@env-kit/node-settings/next";
 ```
 
 CLI binary: `node-settings`
@@ -107,13 +107,13 @@ convention so other AI assistants can crawl the doc index directly.
 ```ts
 // vite.config.ts
 import { defineConfig } from "vite";
-import { nodeSettings } from "@changsik00/node-settings/vite";
+import { nodeSettings } from "@env-kit/node-settings/vite";
 export default defineConfig({ plugins: [nodeSettings()] });
 ```
 
 ```ts
 // next.config.mjs
-import { withNodeSettings } from "@changsik00/node-settings/next";
+import { withNodeSettings } from "@env-kit/node-settings/next";
 export default await withNodeSettings({ reactStrictMode: true });
 ```
 
@@ -141,7 +141,7 @@ out of the runtime source before zod sees them. Opt-in
 
 ```ts
 import { z } from "zod";
-import { defineClientEnv } from "@changsik00/node-settings";
+import { defineClientEnv } from "@env-kit/node-settings";
 
 export const clientEnv = defineClientEnv({
   prefix: "VITE_",
@@ -226,7 +226,7 @@ operator-supplied `.env.<mode>.local`), see `docs/DEPLOYMENT.md`
 ## `todo(...)` sentinels for unfilled values
 
 ```ts
-import { defineSettings, todo } from "@changsik00/node-settings";
+import { defineSettings, todo } from "@env-kit/node-settings";
 
 defineSettings({
   // ...
@@ -239,7 +239,7 @@ defineSettings({
 ```
 
 - `todo()` returns `never` (assignable to any field type) and at
-  runtime an object marked with `Symbol.for("@changsik00/node-settings:todo")`.
+  runtime an object marked with `Symbol.for("@env-kit/node-settings:todo")`.
 - `deepMerge` treats sentinels as opaque — child values cleanly
   replace parent sentinels; sentinels don't corrupt other values.
 - Loader scans the resolved config before `build()`; if any sentinel
@@ -264,7 +264,7 @@ defineSettings({
 
 ```ts
 import { z } from "zod";
-import { defineSettings } from "@changsik00/node-settings";
+import { defineSettings } from "@env-kit/node-settings";
 
 const settings = defineSettings({
   envSchema: z.object({
@@ -459,7 +459,7 @@ Each preset is a factory; pass it to `inferAppEnv()` or to
 `loadDotenvCascade({ appEnvPresets: [...] })`.
 
 ```ts
-import { inferAppEnv, presets } from "@changsik00/node-settings";
+import { inferAppEnv, presets } from "@env-kit/node-settings";
 const APP_ENV = inferAppEnv({
   presets: [presets.vercel(), presets.githubActions({ branchToMode: { main: "prod" } })],
 });
@@ -497,7 +497,7 @@ then `defaultMode` (`'local'` by default). `.local` files are skipped
 in `'test'` mode by default.
 
 ```ts
-import { loadDotenvCascade } from "@changsik00/node-settings";
+import { loadDotenvCascade } from "@env-kit/node-settings";
 const { env, mode, loaded, skipped } = loadDotenvCascade({
   cwd: process.cwd(),
   appEnvKey: "APP_ENV",

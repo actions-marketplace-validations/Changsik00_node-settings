@@ -1,4 +1,4 @@
-# @changsik00/node-settings
+# @env-kit/node-settings
 
 > Schema-first settings library for Node apps. One zod schema produces typed runtime config, layered per-environment settings, a `.env.<mode>` cascade loader, Markdown documentation, Kubernetes ConfigMap + Secret manifests, JSON Schema, and a CLI (validate / check / inspect / generate) that gates deploys in CI.
 
@@ -22,11 +22,11 @@ Designed for backend Node apps (ESM, Node >= 18). Built for teams that ship the 
 
 ## API entry points
 
-- `@changsik00/node-settings`: `defineSettings` (server-side full loader), `defineClientEnv` (prefix-gated browser env), `todo`, `isTodo`, `findTodos`, `loadDotenvCascade`, `loadDotenvFile`, `parseDotenv`, `loadNodeEnv`, `loadViteEnv`, `inferAppEnv`, `inferAppEnvDetailed`, `presets`, `deepMerge`, `mergePerEnv`, `introspectEnvSchema`, `checkPerEnvCompleteness`, `NodeSettingsError`, plus types.
-- `@changsik00/node-settings/generators`: `generateEnvExample`, `generatePerEnvExamples`, `generateMarkdownDocs`, `generateK8sManifests`, `generateJsonSchema`, `generateTfvars`, `generateComposeFragment`.
-- `@changsik00/node-settings/cli`: `runCli` (the binary's programmatic entry point).
-- `@changsik00/node-settings/vite`: `nodeSettings(options?)` — Vite plugin that runs env validation in `buildStart`; aborts `vite build` and (by default) `vite serve` on validation failure.
-- `@changsik00/node-settings/next`: `withNodeSettings(nextConfig?, options?)` — Next.js plugin (HOF) that runs env validation during `next.config` evaluation; aborts `next build`/`next export` and (by default) `next dev` on validation failure.
+- `@env-kit/node-settings`: `defineSettings` (server-side full loader), `defineClientEnv` (prefix-gated browser env), `todo`, `isTodo`, `findTodos`, `loadDotenvCascade`, `loadDotenvFile`, `parseDotenv`, `loadNodeEnv`, `loadViteEnv`, `inferAppEnv`, `inferAppEnvDetailed`, `presets`, `deepMerge`, `mergePerEnv`, `introspectEnvSchema`, `checkPerEnvCompleteness`, `NodeSettingsError`, plus types.
+- `@env-kit/node-settings/generators`: `generateEnvExample`, `generatePerEnvExamples`, `generateMarkdownDocs`, `generateK8sManifests`, `generateJsonSchema`, `generateTfvars`, `generateComposeFragment`.
+- `@env-kit/node-settings/cli`: `runCli` (the binary's programmatic entry point).
+- `@env-kit/node-settings/vite`: `nodeSettings(options?)` — Vite plugin that runs env validation in `buildStart`; aborts `vite build` and (by default) `vite serve` on validation failure.
+- `@env-kit/node-settings/next`: `withNodeSettings(nextConfig?, options?)` — Next.js plugin (HOF) that runs env validation during `next.config` evaluation; aborts `next build`/`next export` and (by default) `next dev` on validation failure.
 - `node-settings` (binary): subcommands `validate [env-file]`, `check [--env <name>] [--workspace]`, `inspect [--env <name>] [--workspace]`, `preflight [env-file] [--workspace]`, `diff [file|-] [--strict]`, `generate <target>` where target ∈ `env-example | envs | docs | k8s | json-schema | tfvars | compose`. All except `generate` accept `--format json` for machine-readable output. `diff` reads a live K8s ConfigMap/Secret YAML (file or stdin) and reports drift against the schema.
 
 ## GitHub Action

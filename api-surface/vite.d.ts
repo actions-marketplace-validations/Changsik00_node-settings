@@ -43,7 +43,7 @@ export interface NodeSettingsViteOptions {
  * ```ts
  * // vite.config.ts
  * import { defineConfig } from "vite";
- * import { nodeSettings } from "@changsik00/node-settings/vite";
+ * import { nodeSettings } from "@env-kit/node-settings/vite";
  *
  * export default defineConfig({
  *   plugins: [nodeSettings()],

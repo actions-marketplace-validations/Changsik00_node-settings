@@ -459,7 +459,7 @@ describe("CLI e2e — --workspace", () => {
   beforeEach(() => {
     originalCwd = process.cwd();
     // Create the workspace under the project root so jiti can resolve
-    // `zod` and `@changsik00/node-settings` via the regular node_modules
+    // `zod` and `@env-kit/node-settings` via the regular node_modules
     // walk-up. Any tmp dir outside the project is unreachable from jiti.
     wsRoot = mkdtempSync(join(originalCwd, ".tmp-ws-e2e-"));
     mkdirSync(join(wsRoot, ".git"));

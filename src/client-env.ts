@@ -40,7 +40,7 @@ export interface DefineClientEnvOptions<
  * ```ts
  * // settings.client.ts
  * import { z } from "zod";
- * import { defineClientEnv } from "@changsik00/node-settings";
+ * import { defineClientEnv } from "@env-kit/node-settings";
  *
  * export const clientEnv = defineClientEnv({
  *   prefix: "VITE_",

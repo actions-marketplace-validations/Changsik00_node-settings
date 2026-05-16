@@ -113,7 +113,7 @@ node-settings check --config sample/settings.ts
    ```
 4. At boot, wire it up:
    ```ts
-   import { loadDotenvCascade } from "@changsik00/node-settings";
+   import { loadDotenvCascade } from "@env-kit/node-settings";
    import settings from "./settings.js";
 
    const { env, mode } = loadDotenvCascade();
