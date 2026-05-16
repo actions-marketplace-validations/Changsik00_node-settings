@@ -27,29 +27,27 @@ GitHub Actions `release.yml` workflow takes it from there to npm.
    6. Tags `v0.11.0`.
    7. Pushes the commit and the tag.
 
-3. **`release.yml` picks up the tag** push and creates the GitHub
-   Release page (body = matching CHANGELOG section).
-4. **`npm publish` is manual** from your local shell:
+3. **`release.yml` picks up the tag** push and does the rest:
+   rebuild + verify, `npm publish --access public` (using
+   `NPM_TOKEN`, an automation token that bypasses 2FA), and create
+   the GitHub Release page (body = matching CHANGELOG section).
 
    ```bash
-   npm login                     # one-time per machine; opens browser
-   npm publish --access public   # publishes the current package.json version
-   npm view @env-kit/node-settings version   # verify
+   npm view @env-kit/node-settings version   # confirm
    ```
 
-   `npm publish` runs against the local `dist/` (already built by
-   `pnpm release` via the verify chain) so what ships is exactly
-   what verify approved.
+To re-publish a tag manually (e.g. release workflow was tweaked
+after the tag landed), use the `workflow_dispatch` trigger:
 
-> **Why manual publish?** Trusted Publishing (OIDC) is wired up in
-> `release.yml` and ready to use — `id-token: write` is granted and
-> the `--provenance` flag has been tested. But the first publish
-> attempt returned a 404 from npm despite a correct Trusted Publisher
-> configuration, and rather than block releases on that debugging
-> session we kept the GitHub Release automation and pushed npm
-> publish back to the local shell. Tracked in BACKLOG.md "Trusted
-> Publishing finalize". When that's resolved, restore the publish
-> step from git history (commit c29c664) and drop this manual step.
+```bash
+gh workflow run release.yml --ref v0.12.0 -f tag=v0.12.0
+```
+
+> **Trusted Publishing (OIDC)** was wired up earlier (`id-token:
+> write` + `--provenance`) but returned 404 from npm despite a
+> correct Trusted Publisher configuration. We kept the simpler
+> `NPM_TOKEN` flow and parked the OIDC migration in BACKLOG.md
+> "Trusted Publishing finalize".
 
 [prov]: https://docs.npmjs.com/generating-provenance-statements
 

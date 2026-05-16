@@ -5,37 +5,41 @@ name: Release
 # What this job does:
 #   1. Sanity-rebuilds the package and runs typecheck + tests.
 #   2. Extracts the matching CHANGELOG section for the tag.
-#   3. Creates the GitHub Release page with that body.
+#   3. Publishes to npm with NPM_TOKEN (automation token, bypasses 2FA).
+#   4. Creates the GitHub Release page with the extracted body.
 #
-# What this job does NOT do:
-#   - `npm publish` is intentionally manual (`npm publish --access public`
-#     from a logged-in local shell) until the npm Trusted Publishing
-#     handshake is finalized. See BACKLOG.md "Trusted Publishing
-#     finalize" — the workflow file is otherwise ready for OIDC
-#     (id-token: write is granted, --provenance flag tested locally).
+# Re-publishing a tag manually:
+#   gh workflow run release.yml --ref v0.12.0
+#   (workflow_dispatch trigger below.)
 #
-# When Trusted Publishing is fixed:
-#   - Re-add the publish step (see git history; commit c29c664).
-#   - Optionally gate `Create GitHub Release` on `needs: publish` once
-#     publish is reliable.
+# Trusted Publishing (OIDC) was tried earlier but returned 404 from npm
+# even with a correctly-configured Trusted Publisher entry; tracked in
+# BACKLOG.md. NPM_TOKEN is the pragmatic fallback and what we use today.
 
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to re-publish (e.g. v0.12.0). Defaults to the latest tag.'
+        required: false
 
 jobs:
   release:
-    name: GitHub Release
+    name: Publish + GitHub Release
     runs-on: ubuntu-latest
     permissions:
-      # `contents: write` lets the workflow create the GitHub Release
-      # entry. `id-token: write` is kept for the eventual npm OIDC
-      # migration — harmless when unused.
       contents: write
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          # workflow_dispatch fires against the default branch; explicit
+          # ref lets us re-publish an older tag without first creating
+          # a branch from it.
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -45,6 +49,7 @@ jobs:
         with:
           node-version: 22.x
           cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
 
       - run: pnpm install --frozen-lockfile
 
@@ -52,14 +57,28 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
+      - name: Resolve tag for this run
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "name=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Extract changelog section for this tag
-        run: node scripts/changelog-extract.mjs ${{ github.ref_name }} > RELEASE_NOTES.md
+        run: node scripts/changelog-extract.mjs ${{ steps.tag.outputs.name }} > RELEASE_NOTES.md
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: ${{ steps.tag.outputs.name }}
           body_path: RELEASE_NOTES.md
           draft: false
           prerelease: false
