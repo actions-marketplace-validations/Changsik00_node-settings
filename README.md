@@ -39,7 +39,8 @@ const settings = defineSettings({
   envSchema: z.object({
     APP_ENV: z.enum(["local", "dev", "prod"]).default("local"),
     DB_HOST: z.string(),
-    DB_PASSWORD: z.string(),  // auto-flagged as a secret
+    DB_PASSWORD: z.string(),         // auto-flagged as a secret
+    APP_CONFIG_JSON: z.string().optional(), // runtime override (see (5))
   }),
 
   // 2. envKey — which env var picks the active perEnv branch.
@@ -67,9 +68,17 @@ const settings = defineSettings({
     prod:  { bucket: "prod-bucket", region: "us-west-2" }, // overrides region
   },
 
-  // 5. build — receives (envSchema output, merged defaults+perEnv) and
-  //    returns the final settings object. This is what you import in
-  //    your app code; the loader Object.freeze()s the return value.
+  // 5. overrideEnvKey — name of an env var that, if set, carries a
+  //    JSON blob deep-merged on top of perEnv at boot. The runtime
+  //    escape hatch: hot-swap a value in a canary deploy, flip a
+  //    flag without redeploying, patch a region during incident
+  //    response. Same image, different config, no rebuild.
+  overrideEnvKey: "APP_CONFIG_JSON",
+
+  // 6. build — receives (envSchema output, merged defaults + perEnv
+  //    + JSON override) and returns the final settings object. This
+  //    is what you import in your app code; the loader Object.freeze()s
+  //    the return value.
   build: (env, config) => ({
     dbHost: env.DB_HOST,
     dbPassword: env.DB_PASSWORD,
@@ -83,15 +92,43 @@ export type Settings = ReturnType<typeof settings>;
 ```
 
 ```ts
-// at boot
+// at boot — three sources resolve into one frozen settings object
+import { loadDotenvCascade } from "@env-kit/node-settings";
 import settings from "./settings.config.js";
-export const cfg = settings(process.env); // fully typed, frozen
+
+const { env, mode } = loadDotenvCascade();
+//   .env → .env.local → .env.<mode> → .env.<mode>.local → process.env
+//   (Vite / Next / dotenv-flow convention; later sources win)
+
+export const cfg = settings(env); // → validate → layer → override → frozen
 ```
 
-**Resolution order** when reading `cfg.bucket` in `prod`:
-1. `defaults.bucket = ""` — base
-2. `perEnv.prod.bucket = "prod-bucket"` — overrides defaults → wins
-3. Optional JSON override via `overrideEnvKey` env var (not used above)
+**One factory, every source**:
+
+```
+files (cascade)        ┐
+   .env                │
+   .env.local          │
+   .env.<mode>         ├─► process.env  ─►  envSchema.parse() (zod)
+   .env.<mode>.local   │     wins                      │
+                       ┘                               ▼
+                                              envKey selects perEnv[mode]
+                                                       │
+              defaults  ⊕  perEnv[mode]  ⊕  JSON override (APP_CONFIG_JSON)
+                            (deep merge, right wins at each layer)
+                                                       │
+                                                       ▼
+                                                  build(env, config)
+                                                       │
+                                                       ▼
+                                                Object.freeze ⇒ cfg
+```
+
+- **`.env` files** — automatic cascade; missing files are skipped silently.
+- **`process.env`** — CI / Kubernetes / Vault inject here; always wins over files.
+- **`defaults` + `perEnv[mode]`** — committed config, layered by env.
+- **`APP_CONFIG_JSON`** — runtime override env var. Deploy the same image,
+  change behaviour via `APP_CONFIG_JSON='{"bucket":"failover"}'`. No rebuild.
 
 For a complete worked example with split-file config + monorepo
 `extends` + env templates, see [`sample/`](./sample).
