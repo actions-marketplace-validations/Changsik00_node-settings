@@ -6,6 +6,7 @@ import {
 } from "../generators/env-example.js";
 import { generateMarkdownDocs } from "../generators/markdown.js";
 import { generateK8sManifests } from "../generators/k8s.js";
+import { generateJsonSchema } from "../generators/json-schema.js";
 import { loadUserConfig } from "./load-user-config.js";
 import type { ParsedArgs } from "./args.js";
 import { flagBool, flagString } from "./args.js";
@@ -19,7 +20,7 @@ export async function runGenerate(args: ParsedArgs): Promise<number> {
   const target = args.positionals[1];
   if (!target) {
     console.error(
-      "[node-settings] generate <target> required. Targets: env-example, docs, k8s",
+      "[node-settings] generate <target> required. Targets: env-example, envs, docs, k8s, json-schema",
     );
     return 2;
   }
@@ -69,6 +70,18 @@ export async function runGenerate(args: ParsedArgs): Promise<number> {
       });
       break;
     }
+    case "json-schema":
+    case "schema": {
+      const title = flagString(args, "title");
+      const $id = flagString(args, "id");
+      const description = flagString(args, "description");
+      output = generateJsonSchema(loader.envFields, {
+        ...(title !== undefined ? { title } : {}),
+        ...($id !== undefined ? { $id } : {}),
+        ...(description !== undefined ? { description } : {}),
+      });
+      break;
+    }
     case "k8s":
     case "kubernetes": {
       const name = flagString(args, "name");
@@ -90,7 +103,7 @@ export async function runGenerate(args: ParsedArgs): Promise<number> {
     }
     default: {
       console.error(
-        `[node-settings] unknown generate target '${target}'. Targets: env-example, envs, docs, k8s`,
+        `[node-settings] unknown generate target '${target}'. Targets: env-example, envs, docs, k8s, json-schema`,
       );
       return 2;
     }

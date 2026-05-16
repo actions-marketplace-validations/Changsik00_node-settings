@@ -13,3 +13,7 @@ export {
   type K8sManifestOptions,
   type K8sManifestResult,
 } from "./k8s.js";
+export {
+  generateJsonSchema,
+  type JsonSchemaOptions,
+} from "./json-schema.js";

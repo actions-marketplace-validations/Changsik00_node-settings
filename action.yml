@@ -1,0 +1,50 @@
+name: '@changsik00/node-settings'
+description: 'Run node-settings CLI commands (validate / check / inspect / generate) against your settings config.'
+author: 'Changsik00'
+branding:
+  icon: 'check-circle'
+  color: 'green'
+
+inputs:
+  command:
+    description: 'Subcommand to run: validate | check | inspect | generate'
+    required: true
+  config:
+    description: 'Path to the settings config file. Optional — defaults to auto-discovery (walks up to the nearest node-settings.config.* / settings.config.*).'
+    required: false
+  args:
+    description: 'Additional arguments passed verbatim to the CLI (e.g. "--env prod" or "env-example --out .env.example").'
+    required: false
+    default: ''
+  version:
+    description: 'npm version of @changsik00/node-settings to run via npx. Defaults to the latest published.'
+    required: false
+    default: 'latest'
+  node-version:
+    description: 'Node.js version for the runner. Defaults to 20.'
+    required: false
+    default: '20'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Run node-settings ${{ inputs.command }}
+      shell: bash
+      env:
+        NS_COMMAND: ${{ inputs.command }}
+        NS_CONFIG: ${{ inputs.config }}
+        NS_ARGS: ${{ inputs.args }}
+        NS_VERSION: ${{ inputs.version }}
+      run: |
+        set -e
+        config_flag=""
+        if [ -n "$NS_CONFIG" ]; then
+          config_flag="--config $NS_CONFIG"
+        fi
+        # shellcheck disable=SC2086
+        npx --yes "@changsik00/node-settings@${NS_VERSION}" $NS_COMMAND $config_flag $NS_ARGS

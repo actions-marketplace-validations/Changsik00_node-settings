@@ -1,0 +1,43 @@
+# @changsik00/node-settings
+
+> Schema-first settings library for Node apps. One zod schema produces typed runtime config, layered per-environment settings, a `.env.<mode>` cascade loader, Markdown documentation, Kubernetes ConfigMap + Secret manifests, JSON Schema, and a CLI (validate / check / inspect / generate) that gates deploys in CI.
+
+The library deliberately separates three layers — `envSchema` (CI-injected env vars, validated by zod), `perEnv` (code-committed config layered onto `defaults`), and an optional `overrideEnvKey` JSON runtime override — and ships a `secret-in-config` lint + a `todo()` sentinel so the *wrong layer* misconfigurations are caught before deploy. Monorepo composition is supported via `extends`; platform presets (Vercel / Netlify / Cloudflare Pages / GitHub Actions / Railway / Render / NODE_ENV) infer `APP_ENV` from well-known env vars when opted in.
+
+Designed for backend Node apps (ESM, Node >= 18). Built for teams that ship the same image to many environments and want infra handoff documented automatically by the same schema that drives runtime validation.
+
+## Docs
+
+- [README](https://github.com/Changsik00/node-settings/blob/main/README.md): Quick start, features, install, CLI overview, comparison table.
+- [AGENTS.md](https://github.com/Changsik00/node-settings/blob/main/AGENTS.md): Technical reference for AI coding assistants — API surface, mental model, common patterns, error codes, file map, verification layers, conventions.
+- [Configuration guide](https://github.com/Changsik00/node-settings/blob/main/docs/CONFIGURATION.md): file layouts (single / split / monorepo), the two "base" axes (`defaults` vs `extends`), monorepo composition, layering model, `todo()` sentinels, decision table for where each value belongs.
+- [Deployment guide](https://github.com/Changsik00/node-settings/blob/main/docs/DEPLOYMENT.md): Setting `APP_ENV` per platform (Docker, Compose, Kubernetes, GitHub Actions, Vercel, Heroku, AWS ECS / Lambda, Render / Railway / Fly), platform presets, `.env.<mode>` cascade, secret injection patterns (GitHub Actions secrets, Vault, AWS / GCP Secret Manager, External Secrets / Sealed Secrets, Doppler / Infisical / 1Password CLI, operator-supplied `.env.<mode>.local`).
+- [Error codes](https://github.com/Changsik00/node-settings/blob/main/docs/ERRORS.md): Full `NodeSettingsError.code` reference (definition-time + runtime).
+- [Releasing](https://github.com/Changsik00/node-settings/blob/main/RELEASING.md): Tag-based release flow (`pnpm release <semver>`).
+- [Backlog](https://github.com/Changsik00/node-settings/blob/main/BACKLOG.md): Tracked future work.
+
+## Examples
+
+- [sample/](https://github.com/Changsik00/node-settings/tree/main/sample): Canonical worked example — `sample/settings.ts` plus `sample/env/` (.env.<mode>.sample templates) and `sample/config/` (split config layers). Demonstrates `todo()`, the secret-in-config lint, and the cascade.
+
+## API entry points
+
+- `@changsik00/node-settings`: `defineSettings`, `todo`, `isTodo`, `findTodos`, `loadDotenvCascade`, `loadDotenvFile`, `parseDotenv`, `loadNodeEnv`, `loadViteEnv`, `inferAppEnv`, `inferAppEnvDetailed`, `presets`, `deepMerge`, `mergePerEnv`, `introspectEnvSchema`, `checkPerEnvCompleteness`, `NodeSettingsError`, plus types.
+- `@changsik00/node-settings/generators`: `generateEnvExample`, `generatePerEnvExamples`, `generateMarkdownDocs`, `generateK8sManifests`, `generateJsonSchema`.
+- `@changsik00/node-settings/cli`: `runCli` (the binary's programmatic entry point).
+- `node-settings` (binary): subcommands `validate [env-file]`, `check [--env <name>] [--workspace]`, `inspect [--env <name>] [--workspace]`, `generate <target>` where target ∈ `env-example | envs | docs | k8s | json-schema`.
+
+## GitHub Action
+
+Available at the repo root as a composite action (`action.yml`). One-line CI usage:
+
+```yaml
+- uses: Changsik00/node-settings@v1
+  with:
+    command: validate
+    config: ./settings.config.ts
+```
+
+## Stable error codes
+
+`INVALID_ENV_SCHEMA`, `MISSING_ENV_KEY`, `INVALID_ENV_KEY_TYPE`, `INVALID_OVERRIDE_KEY`, `PER_ENV_EMPTY`, `PER_ENV_KEY_NOT_IN_ENUM`, `PER_ENV_BRANCH_MISSING`, `PER_ENV_TODO`, `INVALID_EXTENDS_ITEM`, `OVERRIDE_JSON_PARSE`, `ENV_VALIDATION_FAILED`. Match on `code`, never on `message`.

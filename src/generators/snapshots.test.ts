@@ -11,6 +11,7 @@ import { z } from "zod";
 import { defineSettings } from "../define-settings.js";
 import {
   generateEnvExample,
+  generateJsonSchema,
   generateK8sManifests,
   generateMarkdownDocs,
   generatePerEnvExamples,
@@ -97,6 +98,20 @@ describe("generator snapshots", () => {
   it("generatePerEnvExamples — without config summary", () => {
     expect(
       generatePerEnvExamples(settings, { includeConfigSummary: false }),
+    ).toMatchSnapshot();
+  });
+
+  it("generateJsonSchema — defaults", () => {
+    expect(generateJsonSchema(settings.envFields)).toMatchSnapshot();
+  });
+
+  it("generateJsonSchema — with $id, title, description", () => {
+    expect(
+      generateJsonSchema(settings.envFields, {
+        $id: "https://example.com/demo.schema.json",
+        title: "demo-service env",
+        description: "Owned by team-platform.",
+      }),
     ).toMatchSnapshot();
   });
 });

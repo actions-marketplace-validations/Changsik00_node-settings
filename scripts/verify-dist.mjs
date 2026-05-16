@@ -75,6 +75,7 @@ const REQUIRED_GEN = [
   "generatePerEnvExamples",
   "generateMarkdownDocs",
   "generateK8sManifests",
+  "generateJsonSchema",
 ];
 for (const name of REQUIRED_GEN) {
   if (gen[name] === undefined) {

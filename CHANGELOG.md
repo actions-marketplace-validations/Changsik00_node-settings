@@ -10,6 +10,34 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ### Added
 
+- **JSON Schema generator.** `generateJsonSchema(envFields, options?)`
+  exported from `@changsik00/node-settings/generators`. CLI:
+  `node-settings generate json-schema [--out file.json] [--title s]
+  [--id url] [--description s]`. Produces a Draft 2020-12 schema with
+  `format: "password"` + `x-secret: true` on secret fields,
+  deterministic `required[]` ordering, and the `additionalProperties:
+  true` default. Useful for IDE / editor / AI introspection and
+  OpenAPI bridging.
+- **`--workspace` flag on `check` and `inspect`.** Walks up to the
+  workspace root (`.git` / `pnpm-workspace.yaml` / `turbo.json` /
+  `nx.json` / `lerna.json` / `rush.json`) and runs the command
+  against every package found under `packages/`, `apps/`, `services/`,
+  `libs/` that has a `node-settings.config.*` (or `settings.config.*`)
+  file. Exit code aggregates the worst result. Full pnpm-workspace
+  glob expansion is tracked in `BACKLOG.md`.
+- **GitHub Action** (`action.yml` at repo root). Composite action with
+  `command` / `config` / `args` / `version` / `node-version` inputs.
+  Usage: `uses: Changsik00/node-settings@v1 with: { command: validate
+  }`. Documented in README.
+- **`llms.txt`** at repo root following the [llmstxt.org](https://llmstxt.org/)
+  convention — name, summary, doc index, API entry points, error
+  codes. Lets non-AGENTS-aware AI assistants index the project.
+- **Comparison table** in README ranking node-settings against
+  dotenv / dotenv-flow / t3-oss-env / convict / node-config across
+  16 capabilities. Honest about the mindshare gap.
+- **`BACKLOG.md`** at repo root. Categorized future work (CI/CD,
+  AI, env+config, monorepo, robustness, generators, docs, project
+  hygiene) so post-publish iteration has a tracked starting point.
 - Tag-based release flow (`RELEASING.md`, `scripts/release.mjs`,
   `pnpm release <semver>`). Feature commits no longer touch
   `package.json` `version`; the script handles bump + changelog
@@ -18,7 +46,7 @@ under `[Unreleased]` and are promoted to a versioned section when
   Extracts every ` ```ts ` / ` ```typescript ` block from `README.md`,
   `AGENTS.md`, `RELEASING.md`, `docs/*.md`, and `sample/README.md`,
   wraps each with a generous preamble, and runs `tsc --noEmit`. Catches
-  doc drift. Blocks can opt out via `<!-- doc-test:skip -->`.
+  doc drift. Blocks opt in via `<!-- doc-test:check -->`.
 - macOS added to the CI matrix alongside Ubuntu — every push / PR now
   runs the full verification chain on both, across Node 18 / 20 / 22
   (6 jobs total).
@@ -26,6 +54,15 @@ under `[Unreleased]` and are promoted to a versioned section when
 ### Changed
 
 - `pnpm verify` chain now includes `verify:docs` and runs on macOS.
+- Install instructions in README switched from `npm install` to
+  `pnpm add`. (CLI invocations stay with `npx` since it's the broadly
+  understood ad-hoc form.)
+- `verify-pack.mjs` forbid list extended to keep `action.yml`,
+  `llms.txt`, `BACKLOG.md` out of the published tarball (repo-only).
+- `verify-dist.mjs` checks for `generateJsonSchema` in the generators
+  export.
+- `api-surface/generators.d.ts` snapshot refreshed with the new
+  `generateJsonSchema` / `JsonSchemaOptions` exports.
 
 ## [0.10.0] — 2026-05-15
 

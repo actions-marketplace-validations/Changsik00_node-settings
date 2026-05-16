@@ -1,18 +1,38 @@
 import { existsSync } from "node:fs";
+import { relative } from "node:path";
 import { loadDotenvFile } from "../loaders/dotenv-file.js";
 import { checkPerEnvCompleteness } from "../check-per-env.js";
 import { loadUserConfig } from "./load-user-config.js";
+import {
+  discoverWorkspacePackages,
+  findWorkspaceRoot,
+} from "./workspace.js";
 import type { ParsedArgs } from "./args.js";
 import { flagBool, flagString } from "./args.js";
 
 /**
- * `node-settings check --env <name>` — verify a per-env branch is
- * complete enough to deploy: no `TODO-` placeholders, no empty strings
- * in required slots, and (if env files are supplied) every required env
- * var actually present.
+ * `node-settings check [--env <name>] [--workspace]` — verify per-env
+ * branches are complete enough to deploy. Reports placeholder values,
+ * unfilled `todo()` sentinels, secret-looking keys placed in `perEnv`,
+ * and missing required env vars.
+ *
+ * With `--workspace`, walks up to the workspace root and runs the
+ * check against every package found under `packages/`, `apps/`,
+ * `services/`, `libs/` that has a `node-settings.config.*` (or
+ * `settings.config.*`) file. Exit code aggregates the worst result.
  */
 export async function runCheck(args: ParsedArgs): Promise<number> {
+  if (flagBool(args, "workspace")) {
+    return runCheckWorkspace(args);
+  }
   const configPath = flagString(args, "config");
+  return runCheckSingle(configPath, args);
+}
+
+async function runCheckSingle(
+  configPath: string | undefined,
+  args: ParsedArgs,
+): Promise<number> {
   const envFilter = flagString(args, "env");
   const allowWarnings = flagBool(args, "allow-warnings", true);
 
@@ -39,7 +59,7 @@ export async function runCheck(args: ParsedArgs): Promise<number> {
 
   const envs = envFilter ? envFilter.split(",") : undefined;
   const report = checkPerEnvCompleteness(loader, {
-    envs,
+    ...(envs ? { envs } : {}),
     envValues,
   });
 
@@ -67,4 +87,33 @@ export async function runCheck(args: ParsedArgs): Promise<number> {
     return 1;
   }
   return 0;
+}
+
+async function runCheckWorkspace(args: ParsedArgs): Promise<number> {
+  const cwd = process.cwd();
+  const root = findWorkspaceRoot(cwd) ?? cwd;
+  const packages = discoverWorkspacePackages(root);
+  if (packages.length === 0) {
+    console.error(
+      `[node-settings] --workspace: no packages with a settings config found under ${root}`,
+    );
+    console.error(
+      "  scanned: packages/*, apps/*, services/*, libs/*",
+    );
+    return 2;
+  }
+
+  console.log(`workspace root: ${root}`);
+  console.log(`packages: ${packages.length}`);
+  console.log("");
+
+  let worst = 0;
+  for (const pkg of packages) {
+    const rel = relative(root, pkg.configPath);
+    console.log(`=== ${pkg.name} (${rel}) ===`);
+    const code = await runCheckSingle(pkg.configPath, args);
+    if (code > worst) worst = code;
+    console.log("");
+  }
+  return worst;
 }

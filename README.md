@@ -21,7 +21,7 @@ One zod schema → typed runtime config + `.env.example` + Markdown docs + Kuber
 ## TL;DR
 
 ```bash
-npm install @changsik00/node-settings zod
+pnpm add @changsik00/node-settings zod
 ```
 
 <!-- doc-test:check -->
@@ -85,29 +85,77 @@ see [`sample/`](./sample).
 - **ESM, Node ≥ 18.** Only `jiti` (TS config loading) at runtime;
   `zod` is a peer dep.
 
+## Comparison
+
+| Capability                                           | dotenv | dotenv-flow | t3-oss/env | convict | node-config | **node-settings** |
+| ---------------------------------------------------- | :----: | :---------: | :--------: | :-----: | :---------: | :---------------: |
+| zod-based env validation                             |   –    |      –      |     ✅     |    –    |      –      |        ✅         |
+| `.env.<mode>` file cascade                           |   –    |     ✅      |     –      |    –    |      –      |        ✅         |
+| Per-env config layering (defaults → perEnv)          |   –    |      –      |     –      |   ✅    |     ✅      |        ✅         |
+| JSON runtime override                                |   –    |      –      |     –      |    –    |   (env syntax)  |    ✅         |
+| Monorepo `extends`                                   |   –    |      –      |     ✅     |    –    |      –      |        ✅         |
+| Platform presets (Vercel / Netlify / GH Actions / …) |   –    |      –      |     –      |    –    |      –      |        ✅         |
+| `todo(...)` sentinel for unfilled values             |   –    |      –      |     –      |    –    |      –      |        ✅         |
+| `.env.example` autogeneration                        |   –    |      –      |     –      |    –    |      –      |        ✅         |
+| Markdown docs generation                             |   –    |      –      |     –      |  (raw)  |      –      |        ✅         |
+| **K8s ConfigMap + Secret YAML**                      |   –    |      –      |     –      |    –    |      –      |        ✅         |
+| JSON Schema (Draft 2020-12) export                   |   –    |      –      |     –      |    –    |      –      |        ✅         |
+| CLI (validate / check / inspect / generate)          |   –    |      –      |     –      |    –    |      –      |        ✅         |
+| `secret-in-config` lint                              |   –    |      –      |     –      |    –    |      –      |        ✅         |
+| `AGENTS.md` + `llms.txt` (AI-friendly docs)          |   –    |      –      |     –      |    –    |      –      |        ✅         |
+| API surface tracked in git                           |   –    |      –      |     –      |    –    |      –      |        ✅         |
+| GitHub Action                                        |   –    |      –      |     –      |    –    |      –      |        ✅         |
+
+The functional surface is intentionally wider than any single
+incumbent. The trade-off is mindshare — `node-settings` is brand new;
+the others have years of usage behind them. The bet is that
+"schema-first + first-class infra handoff + CI-grade verification"
+becomes the table-stakes shape for env/config tooling in monorepos
+and 12-factor deploys.
+
 ## CLI
 
 ```bash
 # CI gate — exits non-zero on validation errors
 npx node-settings validate [.env.production]
 
-# Per-env completeness check (placeholders, missing required envs)
+# Per-env completeness check (placeholders, missing required envs, secret lint)
 npx node-settings check --env prod,stage
+npx node-settings check --workspace          # every package in a monorepo
 
 # Dry-run inspection — no secrets needed
 npx node-settings inspect --env=prod
+npx node-settings inspect --workspace        # every package in a monorepo
 
 # Generate artifacts from the schema
-npx node-settings generate env-example --out .env.example
-npx node-settings generate envs        --out-dir env-samples/
-npx node-settings generate docs        --out ENV.md
-npx node-settings generate k8s         --name my-app --namespace prod --out k8s.yaml
+npx node-settings generate env-example  --out .env.example
+npx node-settings generate envs         --out-dir env-samples/
+npx node-settings generate docs         --out ENV.md
+npx node-settings generate k8s          --name my-app --namespace prod --out k8s.yaml
+npx node-settings generate json-schema  --out env.schema.json
 ```
 
 Auto-discovers `node-settings.config.{ts,js,...}` (or
 `settings.config.{...}`) by walking up to the nearest workspace marker
 (`.git`, `pnpm-workspace.yaml`, `turbo.json`, `nx.json`, `lerna.json`,
 `rush.json`). TS configs work via [`jiti`](https://github.com/unjs/jiti).
+
+### GitHub Action
+
+```yaml
+# .github/workflows/ci.yml
+- uses: Changsik00/node-settings@v1
+  with:
+    command: validate
+    config: ./settings.config.ts
+
+- uses: Changsik00/node-settings@v1
+  with:
+    command: check
+    args: --workspace --no-allow-warnings
+```
+
+See `action.yml` for the full input list.
 
 ## Documentation
 
@@ -121,6 +169,9 @@ Auto-discovers `node-settings.config.{ts,js,...}` (or
   `.env.<mode>` cascade.
 - **[Error codes](./docs/ERRORS.md)** — every `NodeSettingsError.code`.
 - **[AGENTS.md](./AGENTS.md)** — context for AI coding assistants.
+- **[llms.txt](./llms.txt)** — [llmstxt.org](https://llmstxt.org/) doc index.
+- **[RELEASING.md](./RELEASING.md)** — tag-based release flow.
+- **[BACKLOG.md](./BACKLOG.md)** — tracked future work.
 - **[CHANGELOG.md](./CHANGELOG.md)**
 
 ## License

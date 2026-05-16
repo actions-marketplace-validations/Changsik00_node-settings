@@ -58,11 +58,24 @@ Subcommands:
 | `node-settings generate envs --out-dir` | One `.env.<branch>.example` per perEnv.    |
 | `node-settings generate docs`           | Write Markdown env documentation.          |
 | `node-settings generate k8s --name X`   | Write ConfigMap + Secret YAML.             |
+| `node-settings generate json-schema`    | Draft 2020-12 JSON Schema for the env.     |
 
 The CLI auto-discovers `node-settings.config.{ts,mts,js,mjs,cjs}` or
 `settings.config.{...}`, walking up to the nearest workspace boundary
 (`.git`, `pnpm-workspace.yaml`, `turbo.json`, `nx.json`, `lerna.json`,
 `rush.json`).
+
+`check` and `inspect` accept `--workspace`: walks up to the workspace
+root, scans `packages/`, `apps/`, `services/`, `libs/` for child
+directories containing a settings config, and runs the command against
+each. Exit code aggregates the worst result.
+
+A GitHub Action is shipped at `action.yml` (composite action). Users
+invoke it as `uses: Changsik00/node-settings@v1` with inputs
+`command`, `config`, `args`, `version`, `node-version`.
+
+`llms.txt` at the repo root follows the [llmstxt.org](https://llmstxt.org/)
+convention so other AI assistants can crawl the doc index directly.
 
 ## Core mental model
 

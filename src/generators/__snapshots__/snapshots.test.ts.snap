@@ -56,6 +56,98 @@ SENTRY_DSN=
 "
 `;
 
+exports[`generator snapshots > generateJsonSchema — defaults 1`] = `
+"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Environment Variables",
+  "type": "object",
+  "properties": {
+    "APP_ENV": {
+      "type": "string",
+      "enum": [
+        "local",
+        "dev",
+        "prod"
+      ],
+      "default": "local"
+    },
+    "PORT": {
+      "type": "number",
+      "default": 3000
+    },
+    "DB_HOST": {
+      "type": "string",
+      "description": "Primary database host"
+    },
+    "DB_PASSWORD": {
+      "type": "string",
+      "description": "Primary database password",
+      "format": "password",
+      "x-secret": true
+    },
+    "SENTRY_DSN": {
+      "type": "string",
+      "description": "Sentry DSN",
+      "format": "password",
+      "x-secret": true
+    }
+  },
+  "required": [
+    "DB_HOST",
+    "DB_PASSWORD"
+  ],
+  "additionalProperties": true
+}
+"
+`;
+
+exports[`generator snapshots > generateJsonSchema — with $id, title, description 1`] = `
+"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "demo-service env",
+  "type": "object",
+  "properties": {
+    "APP_ENV": {
+      "type": "string",
+      "enum": [
+        "local",
+        "dev",
+        "prod"
+      ],
+      "default": "local"
+    },
+    "PORT": {
+      "type": "number",
+      "default": 3000
+    },
+    "DB_HOST": {
+      "type": "string",
+      "description": "Primary database host"
+    },
+    "DB_PASSWORD": {
+      "type": "string",
+      "description": "Primary database password",
+      "format": "password",
+      "x-secret": true
+    },
+    "SENTRY_DSN": {
+      "type": "string",
+      "description": "Sentry DSN",
+      "format": "password",
+      "x-secret": true
+    }
+  },
+  "required": [
+    "DB_HOST",
+    "DB_PASSWORD"
+  ],
+  "additionalProperties": true,
+  "$id": "https://example.com/demo.schema.json",
+  "description": "Owned by team-platform."
+}
+"
+`;
+
 exports[`generator snapshots > generateK8sManifests — default (stringData secret) 1`] = `
 {
   "configMap": "apiVersion: v1

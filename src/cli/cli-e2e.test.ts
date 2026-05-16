@@ -196,6 +196,29 @@ describe("CLI e2e — generate", () => {
     expect(text).toContain("| `DB_HOST` |");
   });
 
+  it("generate json-schema emits a Draft 2020-12 JSON Schema", async () => {
+    const out = join(tmp, "env.schema.json");
+    const code = await runCli([
+      "generate",
+      "json-schema",
+      "--config",
+      SAMPLE,
+      "--title",
+      "Sample env",
+      "--out",
+      out,
+    ]);
+    expect(code).toBe(0);
+    const parsed = JSON.parse(readFileSync(out, "utf8"));
+    expect(parsed.$schema).toBe(
+      "https://json-schema.org/draft/2020-12/schema",
+    );
+    expect(parsed.title).toBe("Sample env");
+    expect(parsed.properties.DB_HOST.type).toBe("string");
+    expect(parsed.properties.DB_PASSWORD.format).toBe("password");
+    expect(parsed.required).toContain("DB_HOST");
+  });
+
   it("generate k8s emits ConfigMap + Secret yaml", async () => {
     const out = join(tmp, "k8s.yaml");
     const code = await runCli([

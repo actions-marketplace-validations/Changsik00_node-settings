@@ -1,6 +1,11 @@
+import { relative } from "node:path";
 import type { ParsedArgs } from "./args.js";
-import { flagString } from "./args.js";
+import { flagBool, flagString } from "./args.js";
 import { loadUserConfig } from "./load-user-config.js";
+import {
+  discoverWorkspacePackages,
+  findWorkspaceRoot,
+} from "./workspace.js";
 import { deepMerge } from "../utils/deep-merge.js";
 import { isTodo } from "../todo.js";
 import type { EnvField } from "../introspect.js";
@@ -14,7 +19,17 @@ import type { EnvField } from "../introspect.js";
  * prod config actually look like?" without needing prod credentials.
  */
 export async function runInspect(args: ParsedArgs): Promise<number> {
+  if (flagBool(args, "workspace")) {
+    return runInspectWorkspace(args);
+  }
   const configPath = flagString(args, "config");
+  return runInspectSingle(configPath, args);
+}
+
+async function runInspectSingle(
+  configPath: string | undefined,
+  args: ParsedArgs,
+): Promise<number> {
   const { path: resolvedPath, loader } = await loadUserConfig(configPath);
 
   const branches = Object.keys(loader.resolved.perEnv);
@@ -50,6 +65,30 @@ export async function runInspect(args: ParsedArgs): Promise<number> {
   }
 
   return 0;
+}
+
+async function runInspectWorkspace(args: ParsedArgs): Promise<number> {
+  const cwd = process.cwd();
+  const root = findWorkspaceRoot(cwd) ?? cwd;
+  const packages = discoverWorkspacePackages(root);
+  if (packages.length === 0) {
+    console.error(
+      `[node-settings] --workspace: no packages with a settings config found under ${root}`,
+    );
+    return 2;
+  }
+  console.log(`workspace root: ${root}`);
+  console.log(`packages: ${packages.length}`);
+  console.log("");
+  let worst = 0;
+  for (const pkg of packages) {
+    const rel = relative(root, pkg.configPath);
+    console.log(`=== ${pkg.name} (${rel}) ===`);
+    const code = await runInspectSingle(pkg.configPath, args);
+    if (code > worst) worst = code;
+    console.log("");
+  }
+  return worst;
 }
 
 function formatEnvField(field: EnvField): string {

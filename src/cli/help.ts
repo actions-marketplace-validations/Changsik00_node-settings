@@ -10,7 +10,7 @@ COMMANDS
   inspect [--env <name>] Show the env schema + layered config for each
                          perEnv branch (dry-run, no secrets required).
   generate <target>      Generate artifacts from the schema.
-                         Targets: env-example | envs | docs | k8s
+                         Targets: env-example | envs | docs | k8s | json-schema
 
 GLOBAL OPTIONS
   --config <path>        Path to the settings config file.
@@ -38,6 +38,7 @@ generate envs          --out-dir <dir>
                        (e.g. .env.local.example, .env.dev.example, .env.prod.example).
 generate docs          [--out <path>] [--title <s>] [--intro <s>]
 generate k8s --name <app> [--namespace <ns>] [--inline-secrets] [--out <path>]
+generate json-schema   [--out <path>] [--title <s>] [--id <url>] [--description <s>]
 
 EXAMPLES
   node-settings validate .env.production
