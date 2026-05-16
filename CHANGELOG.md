@@ -10,6 +10,22 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ### Added
 
+- **`node-settings preflight [env-file]`** — one-shot CI gate that
+  composes `validate` + `check` + `inspect` into a single command
+  with one exit code. Supports `--config`, `--env`, `--env-file`,
+  `--workspace`, `--allow-warnings`, and `--format=json`. The JSON
+  payload bundles all three stages under `validate` / `check` /
+  `inspect` keys so CI dashboards and AI agents see one document
+  instead of three.
+- **`--format=json` on `validate` / `check` / `inspect` /
+  `preflight`.** Each command emits a single structured JSON
+  document on stdout (instead of human-formatted text). Stable
+  shapes: `ValidateResult` (with `error.code` + `error.issues[]`
+  when zod fails), `CheckResult` / `WorkspaceCheckResult` (carrying
+  the full `PerEnvCompletenessReport`), `InspectResult` /
+  `WorkspaceInspectResult` (with `envSchema` + per-branch layered
+  `config`). `todo()` sentinels serialise natively as
+  `{ "$todo": "reason" }` via `Symbol.toPrimitive`-style `toJSON`.
 - **JSON Schema generator.** `generateJsonSchema(envFields, options?)`
   exported from `@changsik00/node-settings/generators`. CLI:
   `node-settings generate json-schema [--out file.json] [--title s]

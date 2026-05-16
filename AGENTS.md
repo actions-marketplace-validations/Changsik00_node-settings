@@ -54,21 +54,28 @@ Subcommands:
 | `node-settings validate [env-file]`     | Run the schema against env (CI gate).      |
 | `node-settings check [--env name]`      | Per-env placeholder / required check.      |
 | `node-settings inspect [--env name]`    | Dry-run: show schema + layered config.     |
+| `node-settings preflight [env-file]`    | One-shot: validate + check + inspect.      |
 | `node-settings generate env-example`    | Write a single `.env.example`.             |
 | `node-settings generate envs --out-dir` | One `.env.<branch>.example` per perEnv.    |
 | `node-settings generate docs`           | Write Markdown env documentation.          |
 | `node-settings generate k8s --name X`   | Write ConfigMap + Secret YAML.             |
 | `node-settings generate json-schema`    | Draft 2020-12 JSON Schema for the env.     |
 
+`validate` / `check` / `inspect` / `preflight` accept `--format json`
+to emit a single structured document on stdout (in place of human
+text). `todo()` sentinels serialise as `{ "$todo": "reason" }`. Use
+this for CI dashboards and for AI agents that read CLI output
+directly.
+
 The CLI auto-discovers `node-settings.config.{ts,mts,js,mjs,cjs}` or
 `settings.config.{...}`, walking up to the nearest workspace boundary
 (`.git`, `pnpm-workspace.yaml`, `turbo.json`, `nx.json`, `lerna.json`,
 `rush.json`).
 
-`check` and `inspect` accept `--workspace`: walks up to the workspace
-root, scans `packages/`, `apps/`, `services/`, `libs/` for child
-directories containing a settings config, and runs the command against
-each. Exit code aggregates the worst result.
+`check`, `inspect`, and `preflight` accept `--workspace`: walks up to
+the workspace root, scans `packages/`, `apps/`, `services/`, `libs/`
+for child directories containing a settings config, and runs the
+command against each. Exit code aggregates the worst result.
 
 A GitHub Action is shipped at `action.yml` (composite action). Users
 invoke it as `uses: Changsik00/node-settings@v1` with inputs
@@ -310,7 +317,11 @@ src/
     load-user-config.ts  # cosmiconfig-style walk-up + jiti loader
     validate.ts          # validate subcommand
     check.ts             # check subcommand
+    inspect.ts           # inspect subcommand
+    preflight.ts         # composite validate + check + inspect
     generate.ts          # generate subcommand
+    format.ts            # --format text|json helpers
+    workspace.ts         # workspace discovery
     help.ts              # help text
 ```
 

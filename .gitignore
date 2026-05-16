@@ -3,6 +3,7 @@ dist
 coverage
 .nyc_output
 .doc-check-tmp
+.tmp-ws-e2e-*
 *.tsbuildinfo
 .DS_Store
 .env

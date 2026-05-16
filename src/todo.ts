@@ -41,6 +41,12 @@ export const TODO_SYMBOL = Symbol.for("@changsik00/node-settings:todo");
 export interface TodoSentinel {
   readonly [k: symbol]: unknown;
   readonly reason: string;
+  /**
+   * Custom `toJSON` so `JSON.stringify(config)` produces a readable
+   * marker (`{ "$todo": "reason" }`) instead of an opaque object.
+   * Honored automatically by `JSON.stringify`.
+   */
+  readonly toJSON: () => { $todo: string };
 }
 
 /**
@@ -53,9 +59,11 @@ export interface TodoSentinel {
  * recognise.
  */
 export function todo(reason?: string): never {
+  const resolvedReason = reason ?? "value not yet set";
   const sentinel: TodoSentinel = {
     [TODO_SYMBOL]: true,
-    reason: reason ?? "value not yet set",
+    reason: resolvedReason,
+    toJSON: () => ({ $todo: resolvedReason }),
   };
   return sentinel as never;
 }

@@ -10,9 +10,9 @@ thinking — feel free to re-rank during planning.
 
 ## CI/CD ergonomics
 
-- [ ] **`preflight` CLI** — single subcommand bundling validate + check
-      + inspect into one CI-friendly JSON output. Replaces three
-      separate steps in deployment pipelines. _(small)_
+- [x] ~~**`preflight` CLI** — single subcommand bundling validate + check~~
+      ~~+ inspect into one CI-friendly JSON output.~~ Shipped: `node-settings
+      preflight [env-file]` with `--workspace` + `--format=json`.
 - [ ] **Drift detection** — `kubectl get cm my-app -o yaml | node-settings
       diff -`. Compare a live K8s ConfigMap to what `generate k8s`
       would produce; report missing / extra / changed keys. _(medium)_
@@ -33,9 +33,10 @@ thinking — feel free to re-rank during planning.
 - [ ] **`llms-full.txt`** companion to `llms.txt`, containing the
       concatenated content of all canonical docs for one-shot LLM
       ingestion. _(small)_
-- [ ] **Structured JSON output mode** on `check` / `inspect` /
-      `validate` (`--format=json`) so AI agents and dashboards can
-      consume results without parsing free-form text. _(small)_
+- [x] ~~**Structured JSON output mode** on `check` / `inspect` /~~
+      ~~`validate` (`--format=json`).~~ Shipped: stable `ValidateResult`
+      / `CheckResult` / `InspectResult` / `PreflightResult` shapes,
+      with `todo()` sentinels serialising as `{ "$todo": "reason" }`.
 
 ## env / config ergonomics
 

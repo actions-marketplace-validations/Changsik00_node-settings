@@ -1,7 +1,10 @@
 import { existsSync } from "node:fs";
 import { relative } from "node:path";
 import { loadDotenvFile } from "../loaders/dotenv-file.js";
-import { checkPerEnvCompleteness } from "../check-per-env.js";
+import {
+  checkPerEnvCompleteness,
+  type PerEnvCompletenessReport,
+} from "../check-per-env.js";
 import { loadUserConfig } from "./load-user-config.js";
 import {
   discoverWorkspacePackages,
@@ -9,33 +12,73 @@ import {
 } from "./workspace.js";
 import type { ParsedArgs } from "./args.js";
 import { flagBool, flagString } from "./args.js";
+import { emitJson, isJson } from "./format.js";
+
+export interface CheckResult {
+  ok: boolean;
+  config: string;
+  report: PerEnvCompletenessReport;
+}
+
+interface WorkspaceCheckResult {
+  ok: boolean;
+  workspaceRoot: string;
+  packages: Array<{
+    name: string;
+    configPath: string;
+    /** Result for this package, or an error if loading failed. */
+    result: CheckResult | { ok: false; error: string };
+  }>;
+}
 
 /**
- * `node-settings check [--env <name>] [--workspace]` — verify per-env
- * branches are complete enough to deploy. Reports placeholder values,
- * unfilled `todo()` sentinels, secret-looking keys placed in `perEnv`,
- * and missing required env vars.
- *
- * With `--workspace`, walks up to the workspace root and runs the
- * check against every package found under `packages/`, `apps/`,
- * `services/`, `libs/` that has a `node-settings.config.*` (or
- * `settings.config.*`) file. Exit code aggregates the worst result.
+ * `node-settings check` — verify per-env branches are complete enough
+ * to deploy. With `--workspace`, runs against every discovered package.
+ * `--format=json` emits a single structured document.
  */
 export async function runCheck(args: ParsedArgs): Promise<number> {
   if (flagBool(args, "workspace")) {
     return runCheckWorkspace(args);
   }
   const configPath = flagString(args, "config");
-  return runCheckSingle(configPath, args);
+  return runCheckSinglePrinted(configPath, args);
 }
 
-async function runCheckSingle(
+async function runCheckSinglePrinted(
   configPath: string | undefined,
   args: ParsedArgs,
 ): Promise<number> {
-  const envFilter = flagString(args, "env");
+  const json = isJson(args);
   const allowWarnings = flagBool(args, "allow-warnings", true);
+  const single = await buildCheckResult(configPath, args);
+  if (single === null) return 2; // parsing of --env-file failed; message already printed
 
+  if (json) {
+    emitJson(single);
+  } else {
+    printCheckResultText(single);
+  }
+  if (!single.ok) return 1;
+  if (
+    !allowWarnings &&
+    single.report.issues.some((i) => i.severity === "warning")
+  ) {
+    return 1;
+  }
+  return 0;
+}
+
+/**
+ * Compute the check result without printing it. Returns `null` if the
+ * caller-supplied flags were malformed (a human-readable message is
+ * printed to stderr in that case). Used by both the single-package
+ * path and the workspace iterator.
+ */
+export async function buildCheckResult(
+  configPath: string | undefined,
+  args: ParsedArgs,
+): Promise<CheckResult | null> {
+  const envFilter = flagString(args, "env");
   const { path: resolvedConfig, loader } = await loadUserConfig(configPath);
 
   const envValues: Record<string, Record<string, string>> = {};
@@ -47,11 +90,11 @@ async function runCheckSingle(
         console.error(
           `[node-settings] --env-file expects name=path[,name=path...]`,
         );
-        return 2;
+        return null;
       }
       if (!existsSync(filePath)) {
         console.error(`[node-settings] env file not found: ${filePath}`);
-        return 2;
+        return null;
       }
       envValues[envName] = loadDotenvFile(filePath);
     }
@@ -63,57 +106,98 @@ async function runCheckSingle(
     envValues,
   });
 
-  console.log(`config=${resolvedConfig}`);
-  console.log("");
+  return { ok: report.ok, config: resolvedConfig, report };
+}
 
-  for (const [env, counts] of Object.entries(report.countsByEnv)) {
+export function printCheckResultText(result: CheckResult): void {
+  console.log(`config=${result.config}`);
+  console.log("");
+  for (const [env, counts] of Object.entries(result.report.countsByEnv)) {
     const status =
       counts.errors > 0 ? "FAIL" : counts.warnings > 0 ? "WARN" : "OK  ";
     console.log(
       `${status} ${env}  errors=${counts.errors}  warnings=${counts.warnings}`,
     );
   }
-
-  if (report.issues.length > 0) {
+  if (result.report.issues.length > 0) {
     console.log("");
-    for (const issue of report.issues) {
+    for (const issue of result.report.issues) {
       const tag = issue.severity === "error" ? "ERR " : "WARN";
       console.log(`${tag} [${issue.env}] ${issue.path}: ${issue.message}`);
     }
   }
-
-  if (!report.ok) return 1;
-  if (!allowWarnings && report.issues.some((i) => i.severity === "warning")) {
-    return 1;
-  }
-  return 0;
 }
 
 async function runCheckWorkspace(args: ParsedArgs): Promise<number> {
+  const json = isJson(args);
+  const allowWarnings = flagBool(args, "allow-warnings", true);
   const cwd = process.cwd();
   const root = findWorkspaceRoot(cwd) ?? cwd;
   const packages = discoverWorkspacePackages(root);
   if (packages.length === 0) {
-    console.error(
-      `[node-settings] --workspace: no packages with a settings config found under ${root}`,
-    );
-    console.error(
-      "  scanned: packages/*, apps/*, services/*, libs/*",
-    );
+    const msg = `--workspace: no packages with a settings config found under ${root}`;
+    if (json) {
+      emitJson({ ok: false, workspaceRoot: root, packages: [], error: msg });
+    } else {
+      console.error(`[node-settings] ${msg}`);
+      console.error("  scanned: packages/*, apps/*, services/*, libs/*");
+    }
     return 2;
   }
 
-  console.log(`workspace root: ${root}`);
-  console.log(`packages: ${packages.length}`);
-  console.log("");
+  const result: WorkspaceCheckResult = {
+    ok: true,
+    workspaceRoot: root,
+    packages: [],
+  };
 
   let worst = 0;
   for (const pkg of packages) {
-    const rel = relative(root, pkg.configPath);
-    console.log(`=== ${pkg.name} (${rel}) ===`);
-    const code = await runCheckSingle(pkg.configPath, args);
-    if (code > worst) worst = code;
+    const single = await buildCheckResult(pkg.configPath, args);
+    if (single === null) {
+      result.packages.push({
+        name: pkg.name,
+        configPath: pkg.configPath,
+        result: { ok: false, error: "invalid --env-file argument" },
+      });
+      result.ok = false;
+      worst = Math.max(worst, 2);
+      continue;
+    }
+    result.packages.push({
+      name: pkg.name,
+      configPath: pkg.configPath,
+      result: single,
+    });
+    if (!single.ok) {
+      result.ok = false;
+      worst = Math.max(worst, 1);
+    }
+    if (
+      !allowWarnings &&
+      single.report.issues.some((i) => i.severity === "warning")
+    ) {
+      result.ok = false;
+      worst = Math.max(worst, 1);
+    }
+  }
+
+  if (json) {
+    emitJson(result);
+  } else {
+    console.log(`workspace root: ${root}`);
+    console.log(`packages: ${packages.length}`);
     console.log("");
+    for (const pkgResult of result.packages) {
+      const rel = relative(root, pkgResult.configPath);
+      console.log(`=== ${pkgResult.name} (${rel}) ===`);
+      if ("error" in pkgResult.result) {
+        console.error(`  [node-settings] ${pkgResult.result.error}`);
+      } else {
+        printCheckResultText(pkgResult.result);
+      }
+      console.log("");
+    }
   }
   return worst;
 }

@@ -9,10 +9,12 @@
  */
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -260,6 +262,251 @@ describe("CLI e2e — generate", () => {
       SAMPLE,
     ]);
     expect(code).toBe(2);
+  });
+});
+
+describe("CLI e2e — --format=json", () => {
+  it("validate --format=json emits a structured ok result on success", async () => {
+    const envFile = join(tmp, ".env.local");
+    require("node:fs").writeFileSync(
+      envFile,
+      "APP_ENV=local\nDB_HOST=h\nDB_PASSWORD=p\n",
+    );
+    const code = await runCli([
+      "validate",
+      envFile,
+      "--config",
+      SAMPLE,
+      "--format",
+      "json",
+    ]);
+    expect(code).toBe(0);
+    const doc = JSON.parse(capture.stdout.join(""));
+    expect(doc.ok).toBe(true);
+    expect(doc.source).toBe(envFile);
+    expect(doc.config).toContain("sample/settings.ts");
+  });
+
+  it("validate --format=json emits a structured error result on failure", async () => {
+    const envFile = join(tmp, ".env.broken");
+    require("node:fs").writeFileSync(envFile, "APP_ENV=local\n");
+    const code = await runCli([
+      "validate",
+      envFile,
+      "--config",
+      SAMPLE,
+      "--format",
+      "json",
+    ]);
+    expect(code).toBe(1);
+    const doc = JSON.parse(capture.stdout.join(""));
+    expect(doc.ok).toBe(false);
+    expect(doc.error).toBeDefined();
+    expect(doc.error.code).toBeDefined();
+  });
+
+  it("check --format=json includes per-env counts and issues", async () => {
+    const code = await runCli([
+      "check",
+      "--config",
+      SAMPLE,
+      "--format",
+      "json",
+    ]);
+    expect(code).toBe(1);
+    const doc = JSON.parse(capture.stdout.join(""));
+    expect(doc.ok).toBe(false);
+    expect(doc.report.countsByEnv.prod).toBeDefined();
+    expect(Array.isArray(doc.report.issues)).toBe(true);
+  });
+
+  it("inspect --format=json serialises todo() as { $todo: reason }", async () => {
+    const code = await runCli([
+      "inspect",
+      "--config",
+      SAMPLE,
+      "--env=prod",
+      "--format",
+      "json",
+    ]);
+    expect(code).toBe(0);
+    const doc = JSON.parse(capture.stdout.join(""));
+    expect(doc.config).toContain("sample/settings.ts");
+    const prod = doc.branches.find(
+      (b: { env: string }) => b.env === "prod",
+    );
+    expect(prod).toBeDefined();
+    // cdnDomain is todo() in the sample
+    const cdn = prod.config.cdnDomain;
+    expect(cdn).toBeDefined();
+    expect(cdn.$todo).toBeDefined();
+  });
+});
+
+describe("CLI e2e — preflight", () => {
+  it("text mode prints all three stages and exits 1 due to todo() in prod", async () => {
+    const envFile = join(tmp, ".env.local");
+    require("node:fs").writeFileSync(
+      envFile,
+      "APP_ENV=local\nDB_HOST=h\nDB_PASSWORD=p\n",
+    );
+    const code = await runCli([
+      "preflight",
+      envFile,
+      "--config",
+      SAMPLE,
+    ]);
+    expect(code).toBe(1);
+    const out = capture.logs.concat(capture.errs).join("\n");
+    expect(out).toContain("[1/3] validate");
+    expect(out).toContain("[2/3] check");
+    expect(out).toContain("[3/3] inspect");
+    expect(out).toContain("preflight: FAIL");
+  });
+
+  it("--format=json bundles validate + check + inspect into one document", async () => {
+    const envFile = join(tmp, ".env.local");
+    require("node:fs").writeFileSync(
+      envFile,
+      "APP_ENV=local\nDB_HOST=h\nDB_PASSWORD=p\n",
+    );
+    const code = await runCli([
+      "preflight",
+      envFile,
+      "--config",
+      SAMPLE,
+      "--format",
+      "json",
+    ]);
+    expect(code).toBe(1);
+    const doc = JSON.parse(capture.stdout.join(""));
+    expect(doc.ok).toBe(false);
+    expect(doc.validate.ok).toBe(true);
+    expect(doc.check.ok).toBe(false);
+    expect(doc.inspect.ok).toBe(true);
+  });
+
+  it("returns 2 when env-file is missing", async () => {
+    const code = await runCli([
+      "preflight",
+      "/tmp/nonexistent-preflight-test.env",
+      "--config",
+      SAMPLE,
+    ]);
+    expect(code).toBe(2);
+  });
+});
+
+describe("CLI e2e — --workspace", () => {
+  let originalCwd: string;
+  let wsRoot: string;
+
+  beforeEach(() => {
+    originalCwd = process.cwd();
+    // Create the workspace under the project root so jiti can resolve
+    // `zod` and `@changsik00/node-settings` via the regular node_modules
+    // walk-up. Any tmp dir outside the project is unreachable from jiti.
+    wsRoot = mkdtempSync(join(originalCwd, ".tmp-ws-e2e-"));
+    mkdirSync(join(wsRoot, ".git"));
+    mkdirSync(join(wsRoot, "packages", "alpha"), { recursive: true });
+    mkdirSync(join(wsRoot, "packages", "beta"), { recursive: true });
+    const pkgConfig = `
+import { defineSettings, todo } from "${originalCwd}/src/index.ts";
+import { z } from "zod";
+
+const settings = defineSettings({
+  envSchema: z.object({
+    APP_ENV: z.enum(["local", "prod"]).default("local"),
+    DB_HOST: z.string(),
+  }),
+  envKey: "APP_ENV",
+  defaults: { bucket: "default" },
+  perEnv: {
+    local: { bucket: "local-b" },
+    prod: { bucket: todo("set in prod") },
+  },
+  build: (env, config) => ({ dbHost: env.DB_HOST, bucket: config.bucket }),
+});
+
+export default settings;
+`;
+    writeFileSync(
+      join(wsRoot, "packages", "alpha", "settings.config.ts"),
+      pkgConfig,
+    );
+    writeFileSync(
+      join(wsRoot, "packages", "beta", "settings.config.ts"),
+      pkgConfig,
+    );
+    process.chdir(wsRoot);
+  });
+
+  afterEach(() => {
+    process.chdir(originalCwd);
+    rmSync(wsRoot, { recursive: true, force: true });
+  });
+
+  it("check --workspace aggregates results across packages", async () => {
+    const code = await runCli(["check", "--workspace"]);
+    // Both packages copy the sample, which has todo() in prod → fail.
+    expect(code).toBe(1);
+    const out = capture.logs.concat(capture.errs).join("\n");
+    expect(out).toContain("alpha");
+    expect(out).toContain("beta");
+  });
+
+  it("check --workspace --format=json emits a structured workspace doc", async () => {
+    const code = await runCli(["check", "--workspace", "--format", "json"]);
+    expect(code).toBe(1);
+    const doc = JSON.parse(capture.stdout.join(""));
+    expect(doc.ok).toBe(false);
+    expect(doc.packages.length).toBe(2);
+    expect(doc.packages.map((p: { name: string }) => p.name).sort()).toEqual([
+      "alpha",
+      "beta",
+    ]);
+  });
+
+  it("inspect --workspace --format=json reports per-package InspectResult", async () => {
+    const code = await runCli([
+      "inspect",
+      "--workspace",
+      "--format",
+      "json",
+    ]);
+    expect(code).toBe(0);
+    const doc = JSON.parse(capture.stdout.join(""));
+    expect(doc.packages.length).toBe(2);
+    for (const pkg of doc.packages) {
+      expect(pkg.result.envKey).toBe("APP_ENV");
+      expect(Array.isArray(pkg.result.branches)).toBe(true);
+    }
+  });
+
+  it("preflight --workspace --format=json runs validate+check+inspect per package", async () => {
+    const code = await runCli([
+      "preflight",
+      "--workspace",
+      "--format",
+      "json",
+    ]);
+    expect(code).toBe(1);
+    const doc = JSON.parse(capture.stdout.join(""));
+    expect(doc.packages.length).toBe(2);
+    for (const pkg of doc.packages) {
+      expect(pkg.result.validate).toBeDefined();
+      expect(pkg.result.check).toBeDefined();
+      expect(pkg.result.inspect).toBeDefined();
+    }
+  });
+
+  it("preflight --workspace text mode prints per-package banners", async () => {
+    const code = await runCli(["preflight", "--workspace"]);
+    expect(code).toBe(1);
+    const out = capture.logs.concat(capture.errs).join("\n");
+    expect(out).toContain("workspace root");
+    expect(out).toContain("alpha");
+    expect(out).toContain("beta");
   });
 });
 

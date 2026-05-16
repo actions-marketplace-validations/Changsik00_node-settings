@@ -9,6 +9,34 @@ import {
 import { deepMerge } from "../utils/deep-merge.js";
 import { isTodo } from "../todo.js";
 import type { EnvField } from "../introspect.js";
+import { emitJson, isJson } from "./format.js";
+
+interface InspectEnvBranch {
+  env: string;
+  /** Missing if no branch is defined for the requested env. */
+  missing?: true;
+  /** Merged defaults + perEnv[env]. Todo sentinels serialise as `{ "$todo": reason }`. */
+  config?: unknown;
+}
+
+interface InspectResult {
+  ok: boolean;
+  config: string;
+  envKey: string;
+  overrideEnvKey?: string;
+  envSchema: readonly EnvField[];
+  branches: InspectEnvBranch[];
+}
+
+interface WorkspaceInspectResult {
+  ok: boolean;
+  workspaceRoot: string;
+  packages: Array<{
+    name: string;
+    configPath: string;
+    result: InspectResult | { ok: false; error: string };
+  }>;
+}
 
 /**
  * `node-settings inspect [--env <name>]` — show what env contract and
@@ -23,70 +51,139 @@ export async function runInspect(args: ParsedArgs): Promise<number> {
     return runInspectWorkspace(args);
   }
   const configPath = flagString(args, "config");
-  return runInspectSingle(configPath, args);
+  const json = isJson(args);
+  const result = await buildInspectResult(configPath, args);
+  if (json) {
+    emitJson(result);
+  } else {
+    printInspectResultText(result);
+  }
+  return result.ok ? 0 : 1;
 }
 
-async function runInspectSingle(
+async function buildInspectResult(
   configPath: string | undefined,
   args: ParsedArgs,
-): Promise<number> {
+): Promise<InspectResult> {
   const { path: resolvedPath, loader } = await loadUserConfig(configPath);
-
   const branches = Object.keys(loader.resolved.perEnv);
   const requestedEnvs = flagString(args, "env")?.split(",");
   const targetEnvs = requestedEnvs ?? branches;
 
-  console.log(`config=${resolvedPath}`);
-  console.log(`envKey=${loader.resolved.envKey}`);
+  const result: InspectResult = {
+    ok: true,
+    config: resolvedPath,
+    envKey: loader.resolved.envKey,
+    envSchema: loader.envFields,
+    branches: [],
+  };
   if (loader.resolved.overrideEnvKey) {
-    console.log(`overrideEnvKey=${loader.resolved.overrideEnvKey}`);
+    result.overrideEnvKey = loader.resolved.overrideEnvKey;
   }
-  console.log("");
-
-  console.log("env schema (the contract):");
-  for (const field of loader.envFields) {
-    console.log(`  ${formatEnvField(field)}`);
-  }
-  console.log("");
 
   for (const env of targetEnvs) {
     const branch = loader.resolved.perEnv[env];
     if (!branch) {
-      console.error(`! ${env}: no perEnv branch defined`);
+      result.branches.push({ env, missing: true });
+      result.ok = false;
       continue;
     }
     const layered = deepMerge(
       loader.resolved.defaults as Record<string, unknown>,
       branch as Record<string, unknown>,
     );
-    console.log(`layered config for ${loader.resolved.envKey}=${env}:`);
-    printConfig(layered, "  ");
-    console.log("");
+    result.branches.push({ env, config: layered });
   }
 
-  return 0;
+  return result;
+}
+
+function printInspectResultText(result: InspectResult): void {
+  console.log(`config=${result.config}`);
+  console.log(`envKey=${result.envKey}`);
+  if (result.overrideEnvKey) {
+    console.log(`overrideEnvKey=${result.overrideEnvKey}`);
+  }
+  console.log("");
+
+  console.log("env schema (the contract):");
+  for (const field of result.envSchema) {
+    console.log(`  ${formatEnvField(field)}`);
+  }
+  console.log("");
+
+  for (const branch of result.branches) {
+    if (branch.missing) {
+      console.error(`! ${branch.env}: no perEnv branch defined`);
+      continue;
+    }
+    console.log(`layered config for ${result.envKey}=${branch.env}:`);
+    printConfig(branch.config, "  ");
+    console.log("");
+  }
 }
 
 async function runInspectWorkspace(args: ParsedArgs): Promise<number> {
+  const json = isJson(args);
   const cwd = process.cwd();
   const root = findWorkspaceRoot(cwd) ?? cwd;
   const packages = discoverWorkspacePackages(root);
   if (packages.length === 0) {
-    console.error(
-      `[node-settings] --workspace: no packages with a settings config found under ${root}`,
-    );
+    const msg = `--workspace: no packages with a settings config found under ${root}`;
+    if (json) {
+      emitJson({ ok: false, workspaceRoot: root, packages: [], error: msg });
+    } else {
+      console.error(`[node-settings] ${msg}`);
+    }
     return 2;
   }
-  console.log(`workspace root: ${root}`);
-  console.log(`packages: ${packages.length}`);
-  console.log("");
+
+  const workspaceResult: WorkspaceInspectResult = {
+    ok: true,
+    workspaceRoot: root,
+    packages: [],
+  };
   let worst = 0;
   for (const pkg of packages) {
-    const rel = relative(root, pkg.configPath);
-    console.log(`=== ${pkg.name} (${rel}) ===`);
-    const code = await runInspectSingle(pkg.configPath, args);
-    if (code > worst) worst = code;
+    try {
+      const single = await buildInspectResult(pkg.configPath, args);
+      workspaceResult.packages.push({
+        name: pkg.name,
+        configPath: pkg.configPath,
+        result: single,
+      });
+      if (!single.ok) {
+        workspaceResult.ok = false;
+        worst = Math.max(worst, 1);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      workspaceResult.packages.push({
+        name: pkg.name,
+        configPath: pkg.configPath,
+        result: { ok: false, error: message },
+      });
+      workspaceResult.ok = false;
+      worst = Math.max(worst, 1);
+    }
+  }
+
+  if (json) {
+    emitJson(workspaceResult);
+  } else {
+    console.log(`workspace root: ${root}`);
+    console.log(`packages: ${packages.length}`);
     console.log("");
+    for (const pkgResult of workspaceResult.packages) {
+      const rel = relative(root, pkgResult.configPath);
+      console.log(`=== ${pkgResult.name} (${rel}) ===`);
+      if ("error" in pkgResult.result) {
+        console.error(`  [node-settings] ${pkgResult.result.error}`);
+      } else {
+        printInspectResultText(pkgResult.result);
+      }
+      console.log("");
+    }
   }
   return worst;
 }
@@ -131,3 +228,6 @@ function printConfig(value: unknown, indent: string): void {
     }
   }
 }
+
+export { buildInspectResult };
+export type { InspectResult, InspectEnvBranch, WorkspaceInspectResult };

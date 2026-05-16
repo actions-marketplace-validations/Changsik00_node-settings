@@ -92,26 +92,17 @@ see [`sample/`](./sample).
 | zod-based env validation                             |   –    |      –      |     ✅     |    –    |      –      |        ✅         |
 | `.env.<mode>` file cascade                           |   –    |     ✅      |     –      |    –    |      –      |        ✅         |
 | Per-env config layering (defaults → perEnv)          |   –    |      –      |     –      |   ✅    |     ✅      |        ✅         |
-| JSON runtime override                                |   –    |      –      |     –      |    –    |   (env syntax)  |    ✅         |
+| JSON runtime override                                |   –    |      –      |     –      |    –    | (env syntax)|        ✅         |
 | Monorepo `extends`                                   |   –    |      –      |     ✅     |    –    |      –      |        ✅         |
 | Platform presets (Vercel / Netlify / GH Actions / …) |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | `todo(...)` sentinel for unfilled values             |   –    |      –      |     –      |    –    |      –      |        ✅         |
-| `.env.example` autogeneration                        |   –    |      –      |     –      |    –    |      –      |        ✅         |
-| Markdown docs generation                             |   –    |      –      |     –      |  (raw)  |      –      |        ✅         |
 | **K8s ConfigMap + Secret YAML**                      |   –    |      –      |     –      |    –    |      –      |        ✅         |
-| JSON Schema (Draft 2020-12) export                   |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | CLI (validate / check / inspect / generate)          |   –    |      –      |     –      |    –    |      –      |        ✅         |
-| `secret-in-config` lint                              |   –    |      –      |     –      |    –    |      –      |        ✅         |
-| `AGENTS.md` + `llms.txt` (AI-friendly docs)          |   –    |      –      |     –      |    –    |      –      |        ✅         |
-| API surface tracked in git                           |   –    |      –      |     –      |    –    |      –      |        ✅         |
-| GitHub Action                                        |   –    |      –      |     –      |    –    |      –      |        ✅         |
 
-The functional surface is intentionally wider than any single
-incumbent. The trade-off is mindshare — `node-settings` is brand new;
-the others have years of usage behind them. The bet is that
-"schema-first + first-class infra handoff + CI-grade verification"
-becomes the table-stakes shape for env/config tooling in monorepos
-and 12-factor deploys.
+The differentiation is concentrated in monorepo composition, per-env
+layering with todo-sentinels, and first-class infra handoff (K8s
+manifests). `node-settings` is new; the others have years of usage
+behind them.
 
 ## CLI
 
@@ -126,6 +117,13 @@ npx node-settings check --workspace          # every package in a monorepo
 # Dry-run inspection — no secrets needed
 npx node-settings inspect --env=prod
 npx node-settings inspect --workspace        # every package in a monorepo
+
+# Composite gate: validate + check + inspect in one shot
+npx node-settings preflight .env.production
+
+# Machine-readable output for CI dashboards / AI agents
+npx node-settings validate  .env.production --format json
+npx node-settings preflight .env.production --format json
 
 # Generate artifacts from the schema
 npx node-settings generate env-example  --out .env.example
