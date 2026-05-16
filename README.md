@@ -1,16 +1,18 @@
 <div align="center">
 
-# @env-kit/node-settings
-
 **Schema-first settings for Node apps.**
 One zod schema → typed runtime config + `.env.example` + Markdown docs + Kubernetes manifests + a CLI that gates deploys in CI.
 
 [![npm version](https://img.shields.io/npm/v/@env-kit/node-settings?color=cb3837&label=npm&logo=npm)](https://www.npmjs.com/package/@env-kit/node-settings)
+[![npm downloads](https://img.shields.io/npm/dm/@env-kit/node-settings?color=cb3837&logo=npm)](https://www.npmjs.com/package/@env-kit/node-settings)
 [![CI](https://github.com/Changsik00/node-settings/actions/workflows/ci.yml/badge.svg)](https://github.com/Changsik00/node-settings/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
+[![Bundle size](https://img.shields.io/bundlephobia/minzip/@env-kit/node-settings?label=min%2Bgzip)](https://bundlephobia.com/package/@env-kit/node-settings)
+[![Install size](https://packagephobia.com/badge?p=@env-kit/node-settings)](https://packagephobia.com/result?p=@env-kit/node-settings)
+[![Tests](https://img.shields.io/badge/tests-260%20passing-success?logo=vitest&logoColor=white)](./src)
+[![Coverage](https://img.shields.io/badge/coverage-81%25-brightgreen)](./vitest.config.ts)
 [![Types: TypeScript](https://img.shields.io/badge/types-TypeScript-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Install size](https://packagephobia.com/badge?p=@env-kit/node-settings)](https://packagephobia.com/result?p=@env-kit/node-settings)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 
 [**Sample**](./sample) · [**Configuration**](./docs/CONFIGURATION.md) · [**Deployment**](./docs/DEPLOYMENT.md) · [**Errors**](./docs/ERRORS.md)
 
@@ -30,22 +32,49 @@ import { z } from "zod";
 import { defineSettings } from "@env-kit/node-settings";
 
 const settings = defineSettings({
+  // 1. envSchema — the contract for env vars. CI/infra injects these.
+  //    Key names matching DEFAULT_SECRET_PATTERNS (PASSWORD, TOKEN, …)
+  //    are auto-flagged as secrets, so they land in K8s Secret (not
+  //    ConfigMap) and get masked in generated docs.
   envSchema: z.object({
     APP_ENV: z.enum(["local", "dev", "prod"]).default("local"),
     DB_HOST: z.string(),
     DB_PASSWORD: z.string(),  // auto-flagged as a secret
   }),
+
+  // 2. envKey — which env var picks the active perEnv branch.
+  //    Use "APP_ENV" for rich enums (local/dev/stage/prod), or
+  //    "NODE_ENV" if you want to stick to the Node convention
+  //    (development/production/test). Must exist in envSchema.
   envKey: "APP_ENV",
-  defaults: { bucket: "" },
+
+  // 3. defaults — config shared across every env. Used as the *base*;
+  //    perEnv[mode] is deep-merged on top. If a key exists only in
+  //    defaults, it survives to the final config (fallback for envs
+  //    that don't override it).
+  defaults: {
+    bucket: "",
+    region: "us-east-1",            // every env keeps this unless overridden
+  },
+
+  // 4. perEnv — branch-specific overrides keyed by envKey value.
+  //    Each key here MUST be a value from the envKey enum (typos are
+  //    caught at definition time). Branch wins over defaults via deep
+  //    merge; nested objects merge field-by-field, not replace.
   perEnv: {
     local: { bucket: "local-bucket" },
     dev:   { bucket: "dev-bucket" },
-    prod:  { bucket: "prod-bucket" },
+    prod:  { bucket: "prod-bucket", region: "us-west-2" }, // overrides region
   },
+
+  // 5. build — receives (envSchema output, merged defaults+perEnv) and
+  //    returns the final settings object. This is what you import in
+  //    your app code; the loader Object.freeze()s the return value.
   build: (env, config) => ({
     dbHost: env.DB_HOST,
     dbPassword: env.DB_PASSWORD,
     bucket: config.bucket,
+    region: config.region,
   }),
 });
 
@@ -59,8 +88,13 @@ import settings from "./settings.config.js";
 export const cfg = settings(process.env); // fully typed, frozen
 ```
 
-For a complete worked example with split-file config + env templates,
-see [`sample/`](./sample).
+**Resolution order** when reading `cfg.bucket` in `prod`:
+1. `defaults.bucket = ""` — base
+2. `perEnv.prod.bucket = "prod-bucket"` — overrides defaults → wins
+3. Optional JSON override via `overrideEnvKey` env var (not used above)
+
+For a complete worked example with split-file config + monorepo
+`extends` + env templates, see [`sample/`](./sample).
 
 ## Why use this
 

@@ -10,7 +10,10 @@ jobs:
     name: publish to npm
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # `contents: write` lets the workflow create the GitHub Release
+      # entry below. `id-token: write` is for npm OIDC publishing (a
+      # future migration; harmless today).
+      contents: write
       id-token: write
     steps:
       - uses: actions/checkout@v4
@@ -35,3 +38,15 @@ jobs:
         run: pnpm publish --no-git-checks --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Extract changelog section for this tag
+        run: node scripts/changelog-extract.mjs ${{ github.ref_name }} > RELEASE_NOTES.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: false
