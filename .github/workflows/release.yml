@@ -11,8 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       # `contents: write` lets the workflow create the GitHub Release
-      # entry below. `id-token: write` is for npm OIDC publishing (a
-      # future migration; harmless today).
+      # entry below. `id-token: write` lets npm publish via OIDC
+      # (Trusted Publishing) — no long-lived NPM_TOKEN required.
       contents: write
       id-token: write
     steps:
@@ -34,10 +34,17 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
-      - name: Publish
-        run: pnpm publish --no-git-checks --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish (OIDC / Trusted Publishing)
+        # No NODE_AUTH_TOKEN — npm CLI detects the GitHub Actions
+        # OIDC token (via id-token: write) and exchanges it for a
+        # short-lived publish credential. The Trusted Publisher must
+        # be configured on npm.com for this package:
+        #   npm.com → @env-kit/node-settings → Settings →
+        #   Trusted Publishers → GitHub Actions:
+        #     repo owner:       Changsik00
+        #     repo:             node-settings
+        #     workflow file:    release.yml
+        run: pnpm publish --no-git-checks --access public --provenance
 
       - name: Extract changelog section for this tag
         run: node scripts/changelog-extract.mjs ${{ github.ref_name }} > RELEASE_NOTES.md

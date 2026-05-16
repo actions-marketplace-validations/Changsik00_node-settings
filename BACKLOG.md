@@ -21,6 +21,10 @@ thinking — feel free to re-rank during planning.
 - [ ] **GitHub Action major-tag rolling** — move `action.yml` into a
       dedicated tag scheme (`v1`, `v1.0.0`) so users can pin to a
       major version line. _(small, post-publish)_
+- [x] ~~**Trusted Publishing (OIDC) migration**~~ — Shipped:
+      `release.yml` now publishes via npm OIDC + `--provenance`. No
+      `NPM_TOKEN` secret involved; tarballs carry an npm provenance
+      statement linking them to the exact build commit.
 - [ ] **Pre-built Docker image** containing the CLI, for non-Node
       CI/CD shells (Jenkins / Tekton / Argo Workflows). _(medium)_
 - [ ] **CI examples for Bitbucket Pipelines, GitLab CI, CircleCI** in

@@ -8,6 +8,19 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ## [Unreleased]
 
+### Changed
+
+- **Releases now use npm Trusted Publishing (OIDC) + provenance.**
+  `release.yml` no longer reads the `NPM_TOKEN` secret. Instead the
+  workflow's GitHub Actions identity is verified by npm at publish
+  time and exchanged for a short-lived credential. The published
+  tarball carries an [npm provenance statement][prov] so consumers
+  can verify it was built from this exact commit. Removes the
+  long-lived-token attack surface; matches npm's current best
+  practice for CI publishing.
+
+[prov]: https://docs.npmjs.com/generating-provenance-statements
+
 ### Added
 
 - **External consumer smoke test** (`sample/consumer/`). A private

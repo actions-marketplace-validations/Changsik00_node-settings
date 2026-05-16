@@ -27,8 +27,15 @@ GitHub Actions `release.yml` workflow takes it from there to npm.
    6. Tags `v0.11.0`.
    7. Pushes the commit and the tag.
 
-3. **`release.yml` picks up the tag** push and publishes to npm with
-   the `NPM_TOKEN` secret. No manual `npm publish` needed.
+3. **`release.yml` picks up the tag** push and publishes to npm via
+   **Trusted Publishing** (OIDC). No long-lived NPM_TOKEN involved —
+   GitHub Actions's identity is exchanged for a short-lived publish
+   credential, and the resulting tarball carries [npm provenance][prov]
+   so consumers can verify it was built from this exact commit.
+   The Trusted Publisher is configured on npm.com for the package
+   (`@env-kit/node-settings` → Settings → Trusted Publishers).
+
+[prov]: https://docs.npmjs.com/generating-provenance-statements
 
 ## Picking the version
 
