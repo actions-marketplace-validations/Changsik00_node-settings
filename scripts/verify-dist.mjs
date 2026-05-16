@@ -11,7 +11,7 @@
  */
 import { strict as assert } from "node:assert";
 import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, resolve as resolvePath } from "node:path";
 import { z } from "zod";
 
@@ -41,11 +41,13 @@ for (const p of [
   if (!existsSync(p)) fail(`missing dist artefact: ${p}`);
 }
 
-const root = await import(DIST_INDEX);
-const gen = await import(DIST_GENERATORS);
-const cli = await import(DIST_CLI);
-const vite = await import(DIST_VITE);
-const next = await import(DIST_NEXT);
+// On Windows, dynamic import() of an absolute path is rejected
+// as URL scheme 'd:' — convert to a file:// URL.
+const root = await import(pathToFileURL(DIST_INDEX).href);
+const gen = await import(pathToFileURL(DIST_GENERATORS).href);
+const cli = await import(pathToFileURL(DIST_CLI).href);
+const vite = await import(pathToFileURL(DIST_VITE).href);
+const next = await import(pathToFileURL(DIST_NEXT).href);
 
 const REQUIRED_ROOT = [
   // Core
