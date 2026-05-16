@@ -446,15 +446,6 @@ CI runs all of these on every push / PR across Node 18 / 20 / 22.
 `prepublishOnly` runs verify:dist + verify:api + verify:pack so a
 broken bundle cannot ship.
 
-**Layer 8 — external consumer smoke** (`sample/consumer/`): a
-private package that installs `@env-kit/node-settings` from the npm
-registry and compiles a small app under `strict + skipLibCheck:
-false`, then runs a Node runtime check. Lives in its own workflow
-(`.github/workflows/consumer.yml`) because (a) it requires a
-published version to test against and (b) a daily cron run catches
-registry-side regressions (e.g. a newer `@types/node` exposing a
-latent issue in our `.d.ts`).
-
 When the user reports a regression, the first question is: which
 layer would have caught it? If none would have, add coverage there.
 

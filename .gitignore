@@ -13,9 +13,11 @@ coverage
 !.env.*.sample
 !.env.sample
 # The canonical worked example deliberately commits its env files so
-# users can read them directly. Exempt sample/env/ from the catch-all.
-!sample/env/.env
-!sample/env/.env.*
+# users can read them directly. Exempt sample/'s .env files from the
+# catch-all (the sample's own .gitignore is illustrative — it shows
+# what your *real* project's .gitignore should look like).
+!sample/.env
+!sample/.env.*
 *.log
 logs
 .idea

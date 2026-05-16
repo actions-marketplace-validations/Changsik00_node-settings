@@ -1,0 +1,25 @@
+# Standard Node + tooling artefacts.
+node_modules
+dist
+coverage
+.nyc_output
+*.tsbuildinfo
+*.log
+.DS_Store
+
+# Real-world env strategy:
+#   - `.env`              committed (no secrets; shared base)
+#   - `.env.<mode>`       committed (non-secret per-env hostnames, etc.)
+#   - `.env.local`        gitignored (per-developer override on YOUR machine)
+#   - `.env.<mode>.local` gitignored (per-developer + per-mode override)
+#
+# Production secrets are NEVER committed — they arrive from Vault /
+# K8s Secret / Doppler / GitHub Actions secrets at deploy time and
+# win over file values via the cascade.
+#
+# (In the @env-kit/node-settings repo itself, the parent .gitignore
+# exempts everything under sample/ so the example stays readable —
+# this file documents what your *real* project's .gitignore should
+# look like.)
+.env.local
+.env.*.local

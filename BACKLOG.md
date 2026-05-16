@@ -96,14 +96,12 @@ thinking — feel free to re-rank during planning.
 - [ ] **Windows in CI** — would require `scripts/verify-pack.mjs` to
       use a Node-native tarball reader instead of `tar -tzf`. _(small)_
 - [x] ~~**Real downstream consumer repo** — a tiny app that depends~~
-      ~~on the published version and runs in our CI matrix.~~ Shipped:
-      `sample/consumer/` + `.github/workflows/consumer.yml`. Daily
-      cron + push/PR trigger. Caught one finding worth following up
-      on: `AnySettingsLoader` upper bound has a variance issue —
-      specific loaders satisfy the `extends` use site through
-      inference but fail explicit `T extends AnySettingsLoader`
-      checks. Not user-visible today; revisit when reworking the
-      `extends` types.
+      ~~on the published version and runs in our CI matrix.~~ Built,
+      ran once, then retired. Caught one useful finding before
+      removal (logged under "AnySettingsLoader variance" below);
+      ongoing value didn't justify the noise of a separate
+      sample-but-not-sample directory. Sample directory now reads
+      as a single project.
 - [ ] **Coverage tighten** — `validate-options.ts` and
       `check-per-env.ts` have lower per-file coverage; targeted tests
       to bring them >85%. _(small)_

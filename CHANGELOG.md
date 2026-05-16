@@ -10,6 +10,20 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ### Changed
 
+- **`sample/` restructured to feel like one real project.** The
+  `.env`, `.env.local`, `.env.dev`, `.env.stage`, `.env.prod` files
+  now sit at the sample's project root (where a real app would have
+  them), not in a `sample/env/` subdirectory. A new
+  `sample/.gitignore` documents the real-world env-file gitignore
+  strategy. `sample/README.md` rewritten to read as a project
+  README (file layout, env-vs-config table, the cascade-to-frozen
+  flow diagram, two worked examples walking one key through every
+  layer, and the runtime-override escape hatch).
+- **`sample/consumer/` removed.** The external consumer smoke test
+  was useful for one finding (the AnySettingsLoader variance
+  issue, logged separately) but the ongoing maintenance + the
+  visual clash with "sample is one project" outweighed the value.
+  `.github/workflows/consumer.yml` deleted too.
 - **`--workspace` discovery now parses `pnpm-workspace.yaml` and
   `package.json` `workspaces` instead of the hardcoded heuristic
   scan.** Priority order: pnpm-workspace.yaml (authoritative when

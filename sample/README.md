@@ -1,133 +1,160 @@
-# sample/
+# sample
 
-A complete worked example. Copy the structure to your project, adjust
-paths, done. The repo's own CLI runs against this sample
-(`pnpm verify:sample`), so it doubles as a live test of the public API.
+A small, working project that uses `@env-kit/node-settings` the way
+a real production app would. Read it as a project, not a tutorial —
+the file layout and conventions are exactly what you'd commit to a
+team repo.
 
-## env/ vs config/ — the conceptual split
-
-| | `env/` | `config/` |
-| --- | --- | --- |
-| **Purpose** | Sensitive runtime values | Settings + cross-team intent |
-| **Who fills it** | Infra / CI / Vault / K8s Secret at deploy time | Developers editing source, reviewed via PR |
-| **Examples** | `DB_PASSWORD`, `SENTRY_DSN`, hostnames, ports | bucket names, worker concurrency, feature flags, rate limits |
-| **Source of truth** | Operator's secret store | Git (source code) |
-| **Reviewed by** | Infra team (rotation, audit) | All engineers (code review) |
-| **In your real project** | `.env.<mode>` gitignored; only `.env.example` committed | Fully committed, every file |
-| **Validated by** | `envSchema` (zod) at runtime boot | TypeScript at definition time + `node-settings check` in CI |
-
-Think of it as: **`env/` is the *what* (which values, where do they come
-from at runtime)** — and **`config/` is the *how* (what does this
-service do differently in each environment, written down so the team
-agrees)**.
-
-## File tree
+## What lives where
 
 ```
 sample/
-├── settings.ts             # ← canonical entry point (envSchema + build)
-├── env/                    # ← runtime env vars (sensitive)
-│   ├── .env                #   shared across all envs (no secrets)
-│   ├── .env.local          #   contributor's machine; gitignored in real projects
-│   ├── .env.dev            #   dev cluster
-│   ├── .env.stage          #   staging cluster
-│   └── .env.prod           #   prod cluster (secrets via CI, NOT committed in real life)
-├── config/                 # ← typed config layers (intent)
-│   ├── defaults.ts         #   AppConfig type + baseline values
-│   ├── local.ts            #   DeepPartial<AppConfig> for local
-│   ├── dev.ts              #   ... for dev
-│   ├── stage.ts            #   ... for stage
-│   └── prod.ts             #   ... for prod
-└── consumer/               # ← CI-only smoke test (installs from npm registry)
-    └── ...                 #   see sample/consumer/README.md
+├── .env                # base — committed, shared across envs, no secrets
+├── .env.local          # YOUR machine; gitignored in real projects
+├── .env.dev            # dev cluster — committed (hosts/URLs, no secrets)
+├── .env.stage          # staging cluster
+├── .env.prod           # prod cluster — committed shell, secrets via CI/Vault
+├── .gitignore          # the real-world gitignore strategy (annotated)
+├── settings.ts         # the canonical entry point — envSchema + build()
+└── config/             # typed, per-env config layers
+    ├── defaults.ts     #   AppConfig type + baseline values
+    ├── local.ts        #   DeepPartial<AppConfig> for local
+    ├── dev.ts          #   ... for dev
+    ├── stage.ts        #   ... for stage
+    └── prod.ts         #   ... for prod
 ```
 
-## How the pieces fit at runtime
+The split is intentional:
+
+| | files at the root (`./.env*`) | `./config/*.ts` |
+| --- | --- | --- |
+| **What it carries** | Sensitive or infra-shaped values: hostnames, ports, secrets, tokens, API keys, DB passwords. | Application-shaped values: bucket names, worker concurrency, feature flags, log levels, rate limits. |
+| **Who fills it** | Infra / CI / Vault / Kubernetes Secret at deploy time. | Developers, edited in source, reviewed via PR. |
+| **Committed?** | Non-secret parts yes; real secrets come from a secret store, never commit. | Yes, fully — `config/<mode>.ts` is the cross-team communication channel for "what does this app do differently in prod?" |
+| **Validated by** | `envSchema` (zod) at runtime boot. | TypeScript at compile time (`DeepPartial<AppConfig>`) + `node-settings check` in CI for unfilled `todo()` placeholders. |
+| **Failure mode** | `ENV_VALIDATION_FAILED` (zod error). | `PER_ENV_TODO` (unfilled placeholder) at boot, or compile error for shape mismatch. |
+
+If you've used **dotenv / dotenv-flow** before — `.env*` files map
+directly to your habit. If you've used **convict / node-config / a
+custom `config/<env>.json` setup** — `config/*.ts` is the typed
+upgrade of that pattern.
+
+## How a value gets to your code
 
 ```
-sample/env/.env             ┐
-sample/env/.env.local       │
-sample/env/.env.dev         ├─►  loadDotenvCascade()  ─►  envSchema.parse()  (zod)
-sample/env/.env.stage       │                                       │
-sample/env/.env.prod        │                                       ▼
-process.env (CI-injected)   ┘  wins over file values        envKey selects perEnv[mode]
-                                                                    │
-              config/defaults.ts  ⊕  config/<mode>.ts  ⊕  CONFIG_OVERRIDE_JSON
-                                                                    │
-                                                                    ▼
-                                                             build(env, config)
-                                                                    │
-                                                                    ▼
-                                                           Object.freeze ⇒ cfg
+.env                ┐
+.env.local          │
+.env.<mode>         ├─► loadDotenvCascade() ─►  process.env (wins over files)
+.env.<mode>.local   │                                  │
+CI / Vault / ...    ┘                                  ▼
+                                              envSchema.parse() (zod)
+                                                       │
+                                              envKey selects perEnv[mode]
+                                                       │
+        config/defaults.ts  ⊕  config/<mode>.ts  ⊕  CONFIG_OVERRIDE_JSON
+                                                       │
+                                                       ▼
+                                                 build(env, config)
+                                                       │
+                                                       ▼
+                                                Object.freeze ⇒ cfg
 ```
+
+At every `⊕` step a value from a later source wins over the earlier
+ones — deep-merged so nested fields combine field-by-field rather
+than replace wholesale.
+
+### Worked example: `cfg.bucket` in production
+
+Walk through one key, top to bottom:
+
+| Step | Source | Value seen so far |
+| --- | --- | --- |
+| 1 | `.env` (no `BUCKET` declared — it's a config value, not an env value) | — |
+| 2 | `.env.prod` (same) | — |
+| 3 | `envSchema` doesn't have `BUCKET` either — it's not an env var | — |
+| 4 | `config/defaults.ts`: `defaults.bucket = ""` | `""` |
+| 5 | `config/prod.ts`: `bucket: "prod-bucket"` | **`"prod-bucket"`** |
+| 6 | `CONFIG_OVERRIDE_JSON` not set → no override | `"prod-bucket"` |
+| 7 | `build(env, config)` returns `{ ..., bucket: config.bucket }` | `cfg.bucket === "prod-bucket"` |
+
+### Worked example: `cfg.dbHost` in dev
+
+Same key, env-injected this time:
+
+| Step | Source | Value seen so far |
+| --- | --- | --- |
+| 1 | `.env` (no `DB_HOST` — left for env-specific files) | — |
+| 2 | `.env.dev`: `DB_HOST=db.dev.internal` | `"db.dev.internal"` |
+| 3 | CI sets `DB_HOST=db-replica-7.dev.internal` (overrides .env files) | `"db-replica-7.dev.internal"` |
+| 4 | `envSchema.parse({ DB_HOST: ... })` validates as `string` | `"db-replica-7.dev.internal"` |
+| 5 | `config/*` doesn't touch `dbHost` (it's not in the AppConfig shape) | — |
+| 6 | `build(env, config)` returns `{ dbHost: env.DB_HOST, ... }` | `cfg.dbHost === "db-replica-7.dev.internal"` |
+
+The cascade only goes through files; CI / Vault / Kubernetes Secret
+inject directly into `process.env`, which is the final word.
+
+## Runtime override (the escape hatch)
+
+Set `CONFIG_OVERRIDE_JSON` and the whole `config` half can be
+patched at boot, without a rebuild or redeploy:
+
+```bash
+# Canary the new feature flag for 5% of prod fleet
+CONFIG_OVERRIDE_JSON='{"featureFlags":{"newCheckout":true}}' \
+  node ./dist/server.js
+
+# Incident: failover to the secondary bucket
+CONFIG_OVERRIDE_JSON='{"bucket":"failover-bucket"}' \
+  node ./dist/server.js
+```
+
+The JSON is deep-merged on top of `defaults + perEnv[mode]`, so you
+override just the keys you need.
 
 ## Two failure modes, two timings
 
-The sample illustrates two ways "missing value" can be enforced — pick
-the one that matches *when* the value arrives:
+Pick the right pattern for *when* a value arrives:
 
 | Pattern | Where it lives | Filled by | Failure if missing |
 | --- | --- | --- | --- |
 | **env var** | `envSchema` in `settings.ts` | CI / infra at deploy | `ENV_VALIDATION_FAILED` (zod) |
-| **perEnv hardcoded** | `config/<mode>.ts` | A developer editing source | `PER_ENV_TODO` (todo sentinel) |
+| **perEnv hardcoded** | `config/<mode>.ts` | Developer editing source | `PER_ENV_TODO` (todo sentinel) |
 
-In this sample:
+This sample exercises both:
 
-- **`SENTRY_DSN`** is in `envSchema` — it's a secret the CI/infra team
-  sets at deploy time (Vault, AWS Secrets Manager, GitHub Actions
-  secrets, ...). If CI forgets to set it for an env that requires it,
-  zod's required check fails the boot.
-- **`cdnDomain`** is in `perEnv` — it's committed in source. Each
-  per-env file (`config/local.ts`, `config/dev.ts`, ...) supplies a
-  literal value. `config/prod.ts` deliberately leaves it as
-  `todo(...)` to demonstrate the failure path:
+- **`SENTRY_DSN`** is in `envSchema` — it's a secret CI/infra sets
+  at deploy time. Forgetting to set it for an env that requires it
+  fails the boot with a zod error.
+- **`cdnDomain`** is in `perEnv` — committed in source. Each
+  `config/<mode>.ts` supplies a literal value. `config/prod.ts`
+  deliberately leaves it as `todo(...)` to demonstrate the failure
+  path:
 
   ```bash
   # inspect — prints <TODO: "..."> in the layered config
   node-settings inspect --config sample/settings.ts --env=prod
   #   cdnDomain: <TODO: "set the prod CDN domain before first deploy">
 
-  # check — fails with kind:'todo' error before deploy
+  # check — fails before deploy
   node-settings check --config sample/settings.ts
   #   ERR  [prod] cdnDomain: unfilled todo() at 'cdnDomain': ...
 
-  # loading the env at runtime — throws NodeSettingsError(PER_ENV_TODO)
+  # at runtime — throws NodeSettingsError(PER_ENV_TODO)
   import settings from "./sample/settings.ts";
   settings({ APP_ENV: "prod", DB_HOST: "h", DB_PASSWORD: "p" });
-  //   NodeSettingsError [PER_ENV_TODO]: unfilled todo() value(s) for APP_ENV=prod:
+  //   NodeSettingsError [PER_ENV_TODO]: unfilled todo() value(s)
+  //   for APP_ENV=prod:
   //     - cdnDomain: set the prod CDN domain before first deploy
   ```
 
-> **Don't put `todo(...)` on a value that arrives via CI/env.** `todo()`
-> is a commit-time placeholder. It will throw `PER_ENV_TODO` regardless
-> of what CI sets, because env-var injection does not implicitly fill
-> in perEnv slots. See
-> [`docs/CONFIGURATION.md` "Which pattern for which value?"](../docs/CONFIGURATION.md#which-pattern-for-which-value)
-> for the full table.
+> **Don't put `todo(...)` on a value that arrives via CI/env.**
+> `todo()` is a commit-time placeholder. It will throw
+> `PER_ENV_TODO` no matter what CI sets, because env-var injection
+> does *not* fill in perEnv slots. Sentry DSN belongs in
+> `envSchema`; CDN domain belongs in `perEnv`.
 
-## Gitignore strategy (for your real project)
-
-In the *sample*, every env file is committed so you can read them. In
-**your** project, follow this split:
-
-```gitignore
-# .gitignore
-.env
-.env.*
-!.env.example
-!.env.*.example
-```
-
-- Commit a `.env.example` (or `.env.<mode>.example`) as the template.
-- Real `.env`, `.env.local`, `.env.<mode>` stay local.
-- Generate the example file directly from the schema:
-
-  ```bash
-  node-settings generate env-example --out .env.example
-  node-settings generate envs        --out-dir env-samples/
-  ```
-
-## Run the CLI against this sample
+## Try the CLI against this sample
 
 From the repo root:
 
@@ -138,24 +165,26 @@ node-settings inspect --config sample/settings.ts --env=prod
 # Generate per-env .env templates from the schema
 node-settings generate envs --config sample/settings.ts --out-dir /tmp/envs
 
-# Generate Markdown docs for infra
+# Generate Markdown env documentation
 node-settings generate docs --config sample/settings.ts --out /tmp/ENV.md
 
 # Generate Kubernetes ConfigMap + Secret
 node-settings generate k8s --config sample/settings.ts --name demo --out /tmp/k8s.yaml
 
-# Catch TODO placeholders / missing required envs per branch
+# Catch TODO placeholders / missing required envs per env
 node-settings check --config sample/settings.ts
+
+# Composite gate: validate + check + inspect in one shot
+node-settings preflight .env.local --config sample/settings.ts
 ```
 
-## Use it in your own project
+## Lift it into your own project
 
-1. Copy the relevant pieces of `sample/` into your project.
-2. Rename folders to match your layout — `src/settings/`, `config/`,
-   `apps/api/settings/`, etc.
-3. Gitignore the real `.env.<mode>` files (see above); keep your
-   `config/` files committed.
-4. At boot, wire it up:
+1. Copy the files you want. Most projects start with `settings.ts`
+   + `config/defaults.ts` + one `config/<mode>.ts` and grow.
+2. **Add `.env*` to your real `.gitignore`** (see `sample/.gitignore`
+   — that's a template you can drop in).
+3. At boot, hand the cascade output to `settings`:
 
    ```ts
    import { loadDotenvCascade } from "@env-kit/node-settings";
@@ -166,29 +195,35 @@ node-settings check --config sample/settings.ts
    export const cfg = settings(env);
    ```
 
+   For Vite or Next.js, add the build-time plugin and you're done —
+   bad env aborts the build, not the runtime:
+
+   ```ts
+   // vite.config.ts
+   import { nodeSettings } from "@env-kit/node-settings/vite";
+   export default defineConfig({ plugins: [nodeSettings()] });
+   ```
+
+   ```ts
+   // next.config.mjs
+   import { withNodeSettings } from "@env-kit/node-settings/next";
+   export default await withNodeSettings({ reactStrictMode: true });
+   ```
+
 ## When *not* to split
 
-If your config fits in 30-40 lines, keep it in one file:
+If your config fits in 30-40 lines, skip the `config/` folder and
+inline everything in `settings.ts`:
 
 ```ts
 defineSettings({
   envSchema: z.object({...}),
   envKey: "APP_ENV",
   defaults: {...},
-  perEnv: {
-    local: {...},
-    prod:  {...},
-  },
+  perEnv: { local: {...}, prod: {...} },
   build: (env, config) => ({...}),
 });
 ```
 
-The split is for legibility, not type safety — both layouts get the
-same runtime behaviour and the same type checking.
-
-## See also
-
-- [`sample/consumer/`](./consumer) — a separate, CI-only smoke test
-  that installs `@env-kit/node-settings` from npm (not a workspace
-  link) and compiles a tiny app under strict tsc. Catches "works in
-  our repo but breaks for actual npm consumers" issues.
+The split is for legibility at scale, not for type safety — both
+layouts have identical runtime behaviour and identical types.
