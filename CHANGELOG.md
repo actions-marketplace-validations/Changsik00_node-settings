@@ -10,6 +10,14 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ### Added
 
+- **Vite plugin** — `import { nodeSettings } from
+  "@changsik00/node-settings/vite"`. Validates env at config-resolve
+  time so `vite build` aborts before bundling on bad env, and the
+  dev server refuses to start (override with `failOnDev: false`).
+  Reuses the same loader your runtime code calls — the contract you
+  ship is exactly the one your build was gated on. Vite is an
+  optional peer dep (`vite ^4 || ^5 || ^6 || ^7`); only projects
+  that import `/vite` need it installed.
 - **`node-settings preflight [env-file]`** — one-shot CI gate that
   composes `validate` + `check` + `inspect` into a single command
   with one exit code. Supports `--config`, `--env`, `--env-file`,

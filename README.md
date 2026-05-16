@@ -97,12 +97,13 @@ see [`sample/`](./sample).
 | Platform presets (Vercel / Netlify / GH Actions / …) |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | `todo(...)` sentinel for unfilled values             |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | **K8s ConfigMap + Secret YAML**                      |   –    |      –      |     –      |    –    |      –      |        ✅         |
+| **Vite build-time validation plugin**                |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | CLI (validate / check / inspect / generate)          |   –    |      –      |     –      |    –    |      –      |        ✅         |
 
 The differentiation is concentrated in monorepo composition, per-env
 layering with todo-sentinels, and first-class infra handoff (K8s
-manifests). `node-settings` is new; the others have years of usage
-behind them.
+manifests + Vite). `node-settings` is new; the others have years of
+usage behind them.
 
 ## CLI
 
@@ -154,6 +155,38 @@ Auto-discovers `node-settings.config.{ts,js,...}` (or
 ```
 
 See `action.yml` for the full input list.
+
+### Vite plugin
+
+Fail the dev server / production build the moment your env is invalid,
+without waiting for the app to boot:
+
+```ts
+// vite.config.ts
+import { defineConfig } from "vite";
+import { nodeSettings } from "@changsik00/node-settings/vite";
+
+export default defineConfig({
+  plugins: [
+    nodeSettings(),
+    // ...
+  ],
+});
+```
+
+Plugin options (all optional):
+
+| Option       | Default                                 | Purpose                                                         |
+| ------------ | --------------------------------------- | --------------------------------------------------------------- |
+| `config`     | auto-discover                           | Path to `node-settings.config.{ts,js,...}`.                     |
+| `mode`       | Vite's `mode`                           | Overrides the `.env.<mode>` cascade selector.                   |
+| `envDir`     | Vite's `envDir` → `root` → `cwd`        | Directory holding `.env*` files.                                |
+| `appEnvKey`  | `APP_ENV`                               | Env var that selects the active perEnv branch.                  |
+| `failOnDev`  | `true`                                  | Set `false` to warn instead of throw during `vite serve`.       |
+
+`vite build` always aborts on validation failure. The plugin reuses
+the same loader your runtime code calls, so the contract you ship is
+exactly the one your build was gated on.
 
 ## Documentation
 

@@ -43,6 +43,9 @@ import {
   generateMarkdownDocs,
   generateK8sManifests,
 } from "@changsik00/node-settings/generators";
+
+// Vite plugin — validates env at config-resolve time, fails build / dev fast
+import { nodeSettings } from "@changsik00/node-settings/vite";
 ```
 
 CLI binary: `node-settings`
@@ -83,6 +86,23 @@ invoke it as `uses: Changsik00/node-settings@v1` with inputs
 
 `llms.txt` at the repo root follows the [llmstxt.org](https://llmstxt.org/)
 convention so other AI assistants can crawl the doc index directly.
+
+### Vite plugin (build-time validation)
+
+```ts
+import { defineConfig } from "vite";
+import { nodeSettings } from "@changsik00/node-settings/vite";
+
+export default defineConfig({
+  plugins: [nodeSettings()],
+});
+```
+
+The plugin runs in `buildStart`, so `vite build` aborts before
+bundling if env validation fails. In dev (`vite serve`) it aborts too
+unless `failOnDev: false`. Options: `config`, `mode`, `envDir`,
+`appEnvKey`, `failOnDev`. Vite is an optional peer dep — install only
+in projects that use it.
 
 ## Core mental model
 
@@ -323,6 +343,9 @@ src/
     format.ts            # --format text|json helpers
     workspace.ts         # workspace discovery
     help.ts              # help text
+
+  vite/
+    index.ts             # nodeSettings() Vite plugin
 ```
 
 ## Verification layers (running `pnpm verify`)

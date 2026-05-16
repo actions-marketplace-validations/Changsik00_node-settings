@@ -25,7 +25,8 @@ Designed for backend Node apps (ESM, Node >= 18). Built for teams that ship the 
 - `@changsik00/node-settings`: `defineSettings`, `todo`, `isTodo`, `findTodos`, `loadDotenvCascade`, `loadDotenvFile`, `parseDotenv`, `loadNodeEnv`, `loadViteEnv`, `inferAppEnv`, `inferAppEnvDetailed`, `presets`, `deepMerge`, `mergePerEnv`, `introspectEnvSchema`, `checkPerEnvCompleteness`, `NodeSettingsError`, plus types.
 - `@changsik00/node-settings/generators`: `generateEnvExample`, `generatePerEnvExamples`, `generateMarkdownDocs`, `generateK8sManifests`, `generateJsonSchema`.
 - `@changsik00/node-settings/cli`: `runCli` (the binary's programmatic entry point).
-- `node-settings` (binary): subcommands `validate [env-file]`, `check [--env <name>] [--workspace]`, `inspect [--env <name>] [--workspace]`, `generate <target>` where target ∈ `env-example | envs | docs | k8s | json-schema`.
+- `@changsik00/node-settings/vite`: `nodeSettings(options?)` — Vite plugin that runs env validation in `buildStart`; aborts `vite build` and (by default) `vite serve` on validation failure.
+- `node-settings` (binary): subcommands `validate [env-file]`, `check [--env <name>] [--workspace]`, `inspect [--env <name>] [--workspace]`, `preflight [env-file] [--workspace]`, `generate <target>` where target ∈ `env-example | envs | docs | k8s | json-schema`. All except `generate` accept `--format json` for machine-readable output.
 
 ## GitHub Action
 

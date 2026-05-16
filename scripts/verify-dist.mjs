@@ -22,19 +22,21 @@ const DIST_INDEX = resolvePath(ROOT, "dist/index.js");
 const DIST_GENERATORS = resolvePath(ROOT, "dist/generators/index.js");
 const DIST_CLI = resolvePath(ROOT, "dist/cli/index.js");
 const DIST_BIN = resolvePath(ROOT, "dist/cli/bin.js");
+const DIST_VITE = resolvePath(ROOT, "dist/vite/index.js");
 
 function fail(msg) {
   console.error(`FAIL  ${msg}`);
   process.exit(1);
 }
 
-for (const p of [DIST_INDEX, DIST_GENERATORS, DIST_CLI, DIST_BIN]) {
+for (const p of [DIST_INDEX, DIST_GENERATORS, DIST_CLI, DIST_BIN, DIST_VITE]) {
   if (!existsSync(p)) fail(`missing dist artefact: ${p}`);
 }
 
 const root = await import(DIST_INDEX);
 const gen = await import(DIST_GENERATORS);
 const cli = await import(DIST_CLI);
+const vite = await import(DIST_VITE);
 
 const REQUIRED_ROOT = [
   // Core
@@ -85,6 +87,21 @@ for (const name of REQUIRED_GEN) {
 
 if (typeof cli.runCli !== "function") {
   fail("dist/cli/index.js missing function 'runCli'");
+}
+
+if (typeof vite.nodeSettings !== "function") {
+  fail("dist/vite/index.js missing function 'nodeSettings'");
+}
+// The plugin function returns a plain object with a `name` field;
+// build a dummy and assert the shape.
+const dummyPlugin = vite.nodeSettings();
+if (dummyPlugin.name !== "node-settings") {
+  fail(`vite plugin name should be 'node-settings'; got '${dummyPlugin.name}'`);
+}
+for (const hook of ["config", "configResolved", "buildStart"]) {
+  if (typeof dummyPlugin[hook] !== "function") {
+    fail(`vite plugin missing hook '${hook}'`);
+  }
 }
 
 // Verify presets is the expected namespace
@@ -146,6 +163,7 @@ try {
   }
 }
 
-console.log(`OK    dist/ exposes ${REQUIRED_ROOT.length} root + ${REQUIRED_GEN.length} generator + 1 cli exports`);
+console.log(`OK    dist/ exposes ${REQUIRED_ROOT.length} root + ${REQUIRED_GEN.length} generator + 1 cli + 1 vite exports`);
 console.log(`OK    presets namespace has all ${REQUIRED_PRESET_KEYS.length} platforms`);
 console.log("OK    runtime round-trip + NodeSettingsError contract intact");
+console.log("OK    vite plugin shape (name + config/configResolved/buildStart hooks)");

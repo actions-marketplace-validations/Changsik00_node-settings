@@ -42,8 +42,12 @@ thinking — feel free to re-rank during planning.
 
 - [ ] **Server / client schema split** (t3-oss/env-nextjs style) for
       libraries that ship code to the browser. _(medium)_
-- [ ] **Build-time validation plugin** for Vite / Next / esbuild —
-      fails the prod build on bad env instead of at boot. _(medium)_
+- [x] ~~**Build-time validation plugin** for Vite~~ — shipped:
+      `import { nodeSettings } from "@changsik00/node-settings/vite"`.
+      Next.js / esbuild variants are follow-up.
+- [ ] **Build-time validation plugin** for Next.js + esbuild —
+      same idea as the Vite plugin, but for the other major
+      toolchains. _(medium)_
 - [ ] **`generate tfvars`** — Terraform variable file template from
       the env schema, for IaC handoff. _(small)_
 - [ ] **`generate compose`** — `docker-compose.yml` `env_file` or
