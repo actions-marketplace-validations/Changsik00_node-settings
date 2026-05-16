@@ -8,8 +8,8 @@ One zod schema → typed runtime config + `.env.example` + Markdown docs + Kuber
 [![CI](https://github.com/Changsik00/node-settings/actions/workflows/ci.yml/badge.svg)](https://github.com/Changsik00/node-settings/actions/workflows/ci.yml)
 [![Bundle size](https://img.shields.io/bundlephobia/minzip/@env-kit/node-settings?label=min%2Bgzip)](https://bundlephobia.com/package/@env-kit/node-settings)
 [![Install size](https://packagephobia.com/badge?p=@env-kit/node-settings)](https://packagephobia.com/result?p=@env-kit/node-settings)
-[![Tests](https://img.shields.io/badge/tests-260%20passing-success?logo=vitest&logoColor=white)](./src)
-[![Coverage](https://img.shields.io/badge/coverage-81%25-brightgreen)](./vitest.config.ts)
+[![Tests](https://img.shields.io/badge/tests-292%20passing-success?logo=vitest&logoColor=white)](./src)
+[![Coverage](https://img.shields.io/badge/coverage-87%25-brightgreen)](./vitest.config.ts)
 [![Types: TypeScript](https://img.shields.io/badge/types-TypeScript-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
@@ -172,12 +172,12 @@ For a complete worked example with split-file config + monorepo
 | **K8s drift detection (`diff` CLI)**                 |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | **Terraform `.tfvars` generation**                   |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | **Docker Compose fragment generation**               |   –    |      –      |     –      |    –    |      –      |        ✅         |
-| **Build-time validation plugins (Vite + Next.js)**   |   –    |      –      |     –      |    –    |      –      |        ✅         |
+| **Build-time validation plugins (Vite + Next + esbuild)** |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | CLI (validate / check / inspect / generate)          |   –    |      –      |     –      |    –    |      –      |        ✅         |
 
 The differentiation is concentrated in monorepo composition, per-env
 layering with todo-sentinels, and first-class infra handoff (K8s
-manifests, Terraform tfvars, Docker Compose, Vite / Next.js plugins).
+manifests, Terraform tfvars, Docker Compose, Vite / Next / esbuild plugins).
 `node-settings` is new; the others have years of usage behind them.
 
 ## CLI
