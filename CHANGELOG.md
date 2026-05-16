@@ -8,6 +8,7 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-05-16
 ### Added
 
 - **esbuild build-time validation plugin** (`@env-kit/node-settings/esbuild`).
