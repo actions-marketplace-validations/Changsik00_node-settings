@@ -26,8 +26,8 @@ push.
 ```bash
 cd examples/consumer
 pnpm install          # pulls @env-kit/node-settings from registry
-pnpm check            # tsc --noEmit
-pnpm smoke            # node --experimental-strip-types app.ts
+pnpm check            # tsc --noEmit (strict + skipLibCheck: false)
+pnpm smoke            # tsx app.ts (runtime check across Node 18+)
 pnpm all              # both
 ```
 

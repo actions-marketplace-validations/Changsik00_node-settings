@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "check": "tsc --noEmit",
-    "smoke": "node --experimental-strip-types app.ts",
+    "smoke": "tsx app.ts",
     "all": "pnpm check && pnpm smoke"
   },
   "dependencies": {
@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
     "typescript": "^5.6.0"
   }
 }
