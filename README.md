@@ -240,7 +240,7 @@ See `action.yml` for the full input list.
 ### Build-time validation plugins
 
 Fail the dev server / production build the moment your env is invalid,
-without waiting for the app to boot. Both plugins reuse the same
+without waiting for the app to boot. All three plugins reuse the same
 loader your runtime code calls, so the contract that gated the build
 is the contract that ships.
 
@@ -265,13 +265,27 @@ export default await withNodeSettings({
 });
 ```
 
-`vite build` / `next build` always abort on validation failure.
-`vite serve` / `next dev` abort too unless you pass `failOnDev: false`.
+**esbuild** (`build.mjs`):
 
-Both plugins accept the same shape of options: `config`, `mode`,
-`envDir`, `appEnvKey`, `failOnDev`. Vite and Next.js are *optional*
-peer deps — only projects that import the respective entry need them
-installed.
+```ts
+import { build } from "esbuild";
+import { nodeSettings } from "@env-kit/node-settings/esbuild";
+
+await build({
+  entryPoints: ["src/main.ts"],
+  bundle: true,
+  outfile: "dist/main.js",
+  plugins: [nodeSettings()],
+});
+```
+
+`vite build` / `next build` / `esbuild build` always abort on
+validation failure. `vite serve` / `next dev` abort too unless you
+pass `failOnDev: false`; the esbuild plugin exposes `failOnError`
+for the same purpose in watch mode.
+
+Vite, Next.js, and esbuild are *optional* peer deps — only projects
+that import the respective entry need them installed.
 
 ## Server / client env split
 

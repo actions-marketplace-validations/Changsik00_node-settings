@@ -60,9 +60,14 @@ thinking — feel free to re-rank during planning.
 - [x] ~~**Build-time validation plugin** for Next.js~~ — shipped:
       `import { withNodeSettings } from "@env-kit/node-settings/next"`.
       esbuild variant still open.
-- [ ] **Build-time validation plugin** for esbuild — round out the
-      "build-time plugin" claim to cover non-Vite, non-Next bundlers
-      (Remix esbuild config, custom esbuild-based pipelines). _(medium)_
+- [x] ~~**Build-time validation plugin** for esbuild — round out the~~
+      ~~"build-time plugin" claim to cover non-Vite, non-Next bundlers~~
+      ~~(Remix esbuild config, custom esbuild-based pipelines).~~ Shipped:
+      `import { nodeSettings } from "@env-kit/node-settings/esbuild"`.
+      Plugin runs at `build.onStart`, reports validation failures
+      as esbuild errors (or warnings with `failOnError: false`).
+      esbuild is an optional peer dep; 9 unit tests in
+      `src/esbuild/esbuild.test.ts`.
 - [x] ~~**`generate tfvars`** — Terraform variable file template~~
       Shipped: `node-settings generate tfvars`. HCL output with
       REPLACE_ME placeholders; programmatic `generateTfvars(...)`

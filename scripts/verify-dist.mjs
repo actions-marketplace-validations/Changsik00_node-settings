@@ -24,6 +24,7 @@ const DIST_CLI = resolvePath(ROOT, "dist/cli/index.js");
 const DIST_BIN = resolvePath(ROOT, "dist/cli/bin.js");
 const DIST_VITE = resolvePath(ROOT, "dist/vite/index.js");
 const DIST_NEXT = resolvePath(ROOT, "dist/next/index.js");
+const DIST_ESBUILD = resolvePath(ROOT, "dist/esbuild/index.js");
 
 function fail(msg) {
   console.error(`FAIL  ${msg}`);
@@ -37,6 +38,7 @@ for (const p of [
   DIST_BIN,
   DIST_VITE,
   DIST_NEXT,
+  DIST_ESBUILD,
 ]) {
   if (!existsSync(p)) fail(`missing dist artefact: ${p}`);
 }
@@ -48,6 +50,7 @@ const gen = await import(pathToFileURL(DIST_GENERATORS).href);
 const cli = await import(pathToFileURL(DIST_CLI).href);
 const vite = await import(pathToFileURL(DIST_VITE).href);
 const next = await import(pathToFileURL(DIST_NEXT).href);
+const esbuildPkg = await import(pathToFileURL(DIST_ESBUILD).href);
 
 const REQUIRED_ROOT = [
   // Core
@@ -120,6 +123,21 @@ for (const hook of ["config", "configResolved", "buildStart"]) {
 
 if (typeof next.withNodeSettings !== "function") {
   fail("dist/next/index.js missing function 'withNodeSettings'");
+}
+
+if (typeof esbuildPkg.nodeSettings !== "function") {
+  fail("dist/esbuild/index.js missing function 'nodeSettings'");
+}
+// esbuild plugins are { name, setup }; assert the shape (we can't
+// run setup without a real PluginBuild, which is unit-tested).
+const dummyEsbuildPlugin = esbuildPkg.nodeSettings();
+if (dummyEsbuildPlugin.name !== "node-settings") {
+  fail(
+    `esbuild plugin name should be 'node-settings'; got '${dummyEsbuildPlugin.name}'`,
+  );
+}
+if (typeof dummyEsbuildPlugin.setup !== "function") {
+  fail("esbuild plugin missing setup function");
 }
 
 // Verify presets is the expected namespace
@@ -215,7 +233,7 @@ try {
   }
 }
 
-console.log(`OK    dist/ exposes ${REQUIRED_ROOT.length} root + ${REQUIRED_GEN.length} generator + 1 cli + 1 vite + 1 next exports`);
+console.log(`OK    dist/ exposes ${REQUIRED_ROOT.length} root + ${REQUIRED_GEN.length} generator + 1 cli + 1 vite + 1 next + 1 esbuild exports`);
 console.log(`OK    presets namespace has all ${REQUIRED_PRESET_KEYS.length} platforms`);
 console.log("OK    runtime round-trip + NodeSettingsError contract intact");
 console.log("OK    vite plugin shape (name + config/configResolved/buildStart hooks)");

@@ -10,6 +10,15 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ### Added
 
+- **esbuild build-time validation plugin** (`@env-kit/node-settings/esbuild`).
+  Mirrors the Vite / Next plugins: loads the cascade, runs the
+  loader at `build.onStart`, and reports validation failures as
+  esbuild errors so the build aborts. `failOnError: false`
+  downgrades to a warning (useful for watch mode). esbuild itself
+  has no native dev/build distinction, so a single boolean was
+  enough — no `failOnDev` knob needed. esbuild is an optional peer
+  dep (no install penalty for non-esbuild projects). Completes the
+  build-time plugin trifecta the README has been advertising.
 - **Mutation testing (Stryker) on a nightly schedule.** New
   `pnpm mutation` script and `.github/workflows/mutation.yml`
   workflow that runs Stryker against the pure-logic source files
