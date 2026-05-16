@@ -59,17 +59,26 @@ Subcommands:
 | `node-settings check [--env name]`      | Per-env placeholder / required check.      |
 | `node-settings inspect [--env name]`    | Dry-run: show schema + layered config.     |
 | `node-settings preflight [env-file]`    | One-shot: validate + check + inspect.      |
+| `node-settings diff [file\|-]`          | Compare live K8s manifest to the schema.   |
 | `node-settings generate env-example`    | Write a single `.env.example`.             |
 | `node-settings generate envs --out-dir` | One `.env.<branch>.example` per perEnv.    |
 | `node-settings generate docs`           | Write Markdown env documentation.          |
 | `node-settings generate k8s --name X`   | Write ConfigMap + Secret YAML.             |
 | `node-settings generate json-schema`    | Draft 2020-12 JSON Schema for the env.     |
 
-`validate` / `check` / `inspect` / `preflight` accept `--format json`
-to emit a single structured document on stdout (in place of human
-text). `todo()` sentinels serialise as `{ "$todo": "reason" }`. Use
-this for CI dashboards and for AI agents that read CLI output
-directly.
+`validate` / `check` / `inspect` / `preflight` / `diff` accept
+`--format json` to emit a single structured document on stdout (in
+place of human text). `todo()` sentinels serialise as
+`{ "$todo": "reason" }`. Use this for CI dashboards and for AI
+agents that read CLI output directly.
+
+`diff` reads a multi-doc YAML blob (file path or stdin via `-`) and
+compares its ConfigMap / Secret keys to the env schema. Four issue
+kinds: `missing-required` (error), `secret-in-configmap` (error),
+`public-in-secret` (warning), `extra-key` (warning). The `--strict`
+flag promotes warnings to non-zero exit. Typical use: pipe
+`kubectl get cm,secret -n prod -o yaml` into it during a CI gate
+that verifies the live cluster still matches the schema you ship.
 
 The CLI auto-discovers `node-settings.config.{ts,mts,js,mjs,cjs}` or
 `settings.config.{...}`, walking up to the nearest workspace boundary
@@ -338,6 +347,7 @@ factory call time. The rest surface when the loader is invoked.
 src/
   define-settings.ts     # defineSettings(), SettingsLoader, extends merge
   client-env.ts          # defineClientEnv() — prefix-gated browser-safe env
+  diff-k8s.ts            # parseK8sYaml() + diffAgainstSchema()
   introspect.ts          # zod schema -> EnvField[], secret detection
   errors.ts              # NodeSettingsError + codes
   validate-options.ts    # defensive checks run at defineSettings time
@@ -367,6 +377,7 @@ src/
     check.ts             # check subcommand
     inspect.ts           # inspect subcommand
     preflight.ts         # composite validate + check + inspect
+    diff.ts              # diff subcommand (live K8s manifest vs schema)
     generate.ts          # generate subcommand
     format.ts            # --format text|json helpers
     workspace.ts         # workspace discovery

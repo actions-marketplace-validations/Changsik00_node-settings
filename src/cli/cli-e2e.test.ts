@@ -510,6 +510,143 @@ export default settings;
   });
 });
 
+describe("CLI e2e — diff", () => {
+  it("text mode passes on a complete, correct ConfigMap + Secret", async () => {
+    const yamlPath = join(tmp, "live.yaml");
+    require("node:fs").writeFileSync(
+      yamlPath,
+      `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm
+data:
+  APP_ENV: prod
+  DB_HOST: db.example.com
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: s
+type: Opaque
+stringData:
+  DB_PASSWORD: secret
+`,
+    );
+    const code = await runCli(["diff", yamlPath, "--config", SAMPLE]);
+    expect(code).toBe(0);
+    expect(capture.logs.join("\n")).toMatch(/no drift/);
+  });
+
+  it("flags secret-in-configmap as an error", async () => {
+    const yamlPath = join(tmp, "leaky.yaml");
+    require("node:fs").writeFileSync(
+      yamlPath,
+      `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm
+data:
+  APP_ENV: prod
+  DB_HOST: db.example.com
+  DB_PASSWORD: this-leaked
+`,
+    );
+    const code = await runCli(["diff", yamlPath, "--config", SAMPLE]);
+    expect(code).toBe(1);
+    const out = capture.logs.join("\n");
+    expect(out).toMatch(/secret-in-configmap/);
+    expect(out).toMatch(/DB_PASSWORD/);
+  });
+
+  it("--format=json emits a structured report", async () => {
+    const yamlPath = join(tmp, "live.yaml");
+    require("node:fs").writeFileSync(
+      yamlPath,
+      `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm
+data:
+  APP_ENV: prod
+  DB_HOST: db.example.com
+  LEGACY: ignored
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: s
+type: Opaque
+stringData:
+  DB_PASSWORD: secret
+`,
+    );
+    const code = await runCli([
+      "diff",
+      yamlPath,
+      "--config",
+      SAMPLE,
+      "--format",
+      "json",
+    ]);
+    expect(code).toBe(0); // extra-key is a warning, not an error
+    const doc = JSON.parse(capture.stdout.join(""));
+    expect(doc.ok).toBe(true);
+    expect(doc.report.counts.warnings).toBeGreaterThan(0);
+    expect(
+      doc.report.issues.some(
+        (i: { kind: string; key: string }) =>
+          i.kind === "extra-key" && i.key === "LEGACY",
+      ),
+    ).toBe(true);
+  });
+
+  it("--strict turns warnings into a non-zero exit", async () => {
+    const yamlPath = join(tmp, "live.yaml");
+    require("node:fs").writeFileSync(
+      yamlPath,
+      `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm
+data:
+  APP_ENV: prod
+  DB_HOST: db.example.com
+  LEGACY: leftover
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: s
+type: Opaque
+stringData:
+  DB_PASSWORD: secret
+`,
+    );
+    const code = await runCli([
+      "diff",
+      yamlPath,
+      "--config",
+      SAMPLE,
+      "--strict",
+    ]);
+    expect(code).toBe(1);
+  });
+
+  it("returns 2 when the file does not exist", async () => {
+    const code = await runCli([
+      "diff",
+      "/tmp/never-existed-node-settings-diff.yaml",
+      "--config",
+      SAMPLE,
+    ]);
+    expect(code).toBe(2);
+  });
+});
+
 describe("CLI e2e — top-level dispatch", () => {
   it("prints help and exits 0 when no command is given", async () => {
     const code = await runCli([]);

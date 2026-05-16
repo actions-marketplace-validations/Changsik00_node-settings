@@ -5,6 +5,7 @@ import { runCheck } from "./check.js";
 import { runGenerate } from "./generate.js";
 import { runInspect } from "./inspect.js";
 import { runPreflight } from "./preflight.js";
+import { runDiff } from "./diff.js";
 
 /**
  * Programmatic entry point for the `node-settings` CLI. Returns the
@@ -32,6 +33,8 @@ export async function runCli(argv: readonly string[]): Promise<number> {
       return runInspect(args);
     case "preflight":
       return runPreflight(args);
+    case "diff":
+      return runDiff(args);
     case "generate":
     case "gen":
       return runGenerate(args);

@@ -10,6 +10,8 @@ COMMANDS
   inspect [--env <name>] Show the env schema + layered config for each
                          perEnv branch (dry-run, no secrets required).
   preflight [env-file]   One-shot CI gate: validate + check + inspect.
+  diff [file|-]          Compare a live K8s ConfigMap/Secret YAML
+                         against the schema; flag drift + leaked secrets.
   generate <target>      Generate artifacts from the schema.
                          Targets: env-example | envs | docs | k8s | json-schema
 
@@ -46,6 +48,15 @@ preflight
     Composite CI gate. Runs validate against the live env (or supplied
     file), then check, then inspect. Exits non-zero if any stage fails.
 
+diff
+  node-settings diff [file|-] [--config <path>] [--strict]
+                     [--format <text|json>]
+    Compare a live K8s manifest (ConfigMap + Secret YAML) against
+    the schema. Reports missing required keys, secrets accidentally
+    placed in a ConfigMap, non-secrets in a Secret, and extra
+    undeclared keys. Pipe input via "kubectl get cm,secret -o yaml".
+    --strict treats warnings (extra-key, public-in-secret) as errors.
+
 generate env-example   [--out <path>]
 generate envs          --out-dir <dir>
                        Writes one .env.<branch>.example per perEnv branch
@@ -58,6 +69,7 @@ EXAMPLES
   node-settings validate .env.production
   node-settings check --env prod,stage --env-file prod=.env.prod
   node-settings preflight .env.production --format json
+  kubectl get cm,secret -n prod -o yaml | node-settings diff -
   node-settings generate env-example --out .env.example
   node-settings generate envs --out-dir env-samples/
   node-settings generate docs --out ENV.md

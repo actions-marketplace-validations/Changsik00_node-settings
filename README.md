@@ -98,6 +98,7 @@ see [`sample/`](./sample).
 | Platform presets (Vercel / Netlify / GH Actions / …) |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | `todo(...)` sentinel for unfilled values             |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | **K8s ConfigMap + Secret YAML**                      |   –    |      –      |     –      |    –    |      –      |        ✅         |
+| **K8s drift detection (`diff` CLI)**                 |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | **Vite build-time validation plugin**                |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | CLI (validate / check / inspect / generate)          |   –    |      –      |     –      |    –    |      –      |        ✅         |
 
@@ -123,9 +124,13 @@ npx node-settings inspect --workspace        # every package in a monorepo
 # Composite gate: validate + check + inspect in one shot
 npx node-settings preflight .env.production
 
+# Drift detection: compare a live K8s ConfigMap/Secret to your schema
+kubectl get cm,secret -n prod -o yaml | npx node-settings diff -
+
 # Machine-readable output for CI dashboards / AI agents
 npx node-settings validate  .env.production --format json
 npx node-settings preflight .env.production --format json
+npx node-settings diff      live.yaml       --format json
 
 # Generate artifacts from the schema
 npx node-settings generate env-example  --out .env.example
@@ -226,6 +231,30 @@ Three guarantees:
 Conventional prefixes: `NEXT_PUBLIC_` (Next.js), `VITE_` (Vite),
 `PUBLIC_` (Astro, SvelteKit). Pair with `defineSettings` for the
 server side; the prefix is your compile-time *and* runtime firewall.
+
+## K8s drift detection
+
+The `generate k8s` command writes ConfigMap + Secret YAML from your
+schema. `node-settings diff` closes the loop in the other direction:
+compare what's *actually* running in your cluster against the schema
+your code expects.
+
+```bash
+kubectl get cm,secret -n prod -o yaml | npx node-settings diff -
+```
+
+The four issue categories:
+
+| Category               | Severity | What it catches                                                                |
+| ---------------------- | -------- | ------------------------------------------------------------------------------ |
+| `missing-required`     | error    | Schema key is required but missing from every live manifest.                   |
+| `secret-in-configmap`  | error    | Schema flags the key secret, but it sits in a ConfigMap (read by anyone).      |
+| `public-in-secret`     | warning  | Schema doesn't flag it secret, but it lives in a Secret (harmless / odd).      |
+| `extra-key`            | warning  | Key present in the live manifest but not declared in the schema.               |
+
+Exit codes: `0` for clean / warnings-only, `1` on any error,
+`2` for bad input. Pass `--strict` to upgrade warnings into errors.
+`--format json` emits a single `DiffReport` document for CI dashboards.
 
 ## Documentation
 

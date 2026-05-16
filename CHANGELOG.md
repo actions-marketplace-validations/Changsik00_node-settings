@@ -10,6 +10,18 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ### Added
 
+- **`node-settings diff [file|-]` — K8s drift detection.** Compares
+  a live ConfigMap / Secret YAML (file path or stdin) against the env
+  schema. Four issue kinds: `missing-required` and
+  `secret-in-configmap` are errors (block deploys); `public-in-secret`
+  and `extra-key` are warnings (use `--strict` to upgrade). Pipe
+  `kubectl get cm,secret -n <ns> -o yaml | node-settings diff -` in
+  a CI gate to verify the live cluster still matches the schema you
+  ship. `--format json` emits a `DiffReport` document. Closes the
+  loop on the `generate k8s` direction — the schema is now the source
+  of truth for both writing and verifying cluster state.
+- New `yaml` runtime dep (parser for the diff input). Small, no
+  transitive deps; loaded only by the `diff` path.
 - **`defineClientEnv` — server / client env split.** New factory at
   the package root for browser-bundled env. Takes a `prefix`
   (`NEXT_PUBLIC_` / `VITE_` / `PUBLIC_` / …) and a zod schema; throws

@@ -13,9 +13,11 @@ thinking — feel free to re-rank during planning.
 - [x] ~~**`preflight` CLI** — single subcommand bundling validate + check~~
       ~~+ inspect into one CI-friendly JSON output.~~ Shipped: `node-settings
       preflight [env-file]` with `--workspace` + `--format=json`.
-- [ ] **Drift detection** — `kubectl get cm my-app -o yaml | node-settings
-      diff -`. Compare a live K8s ConfigMap to what `generate k8s`
-      would produce; report missing / extra / changed keys. _(medium)_
+- [x] ~~**Drift detection** — `kubectl get cm my-app -o yaml | node-settings~~
+      ~~diff -`.~~ Shipped: `node-settings diff [file|-]` with four
+      issue kinds (`missing-required`, `secret-in-configmap`,
+      `public-in-secret`, `extra-key`), `--strict`, `--format json`.
+      Value-level diff (defaults vs live values) left as a follow-up.
 - [ ] **GitHub Action major-tag rolling** — move `action.yml` into a
       dedicated tag scheme (`v1`, `v1.0.0`) so users can pin to a
       major version line. _(small, post-publish)_
