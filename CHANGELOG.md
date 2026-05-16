@@ -10,6 +10,17 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ### Added
 
+- **Mutation testing (Stryker) on a nightly schedule.** New
+  `pnpm mutation` script and `.github/workflows/mutation.yml`
+  workflow that runs Stryker against the pure-logic source files
+  (`check-*.ts`, `diff-k8s.ts`, `validate-options.ts`,
+  `introspect.ts`, `define-settings.ts`, generators, loaders,
+  utils, presets, todo). The CLI surface is excluded — its tests
+  rely on `process.chdir`, which throws inside the worker threads
+  Stryker spawns. A dedicated `vitest.mutation.config.ts` skips
+  those tests. Score thresholds start at break=50 / low=60 /
+  high=80 — raise as test quality improves. Reports are uploaded
+  as a 14-day workflow artefact.
 - **`CONTRIBUTING.md`** with local setup, the verify-chain mapping
   (each of the eight layers and what kind of regression it catches),
   conventions (ESM-with-.js-imports, no emojis, no AI-attribution,

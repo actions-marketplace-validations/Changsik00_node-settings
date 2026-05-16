@@ -90,9 +90,13 @@ thinking — feel free to re-rank during planning.
 
 ## Coverage / robustness
 
-- [ ] **Mutation testing (Stryker)** — verify that the unit tests
-      actually catch broken implementations. Probably wired into a
-      nightly schedule rather than per-PR. _(medium)_
+- [x] ~~**Mutation testing (Stryker)** — verify that the unit tests~~
+      ~~actually catch broken implementations. Probably wired into a~~
+      ~~nightly schedule rather than per-PR.~~ Shipped: nightly cron
+      via `.github/workflows/mutation.yml`, `pnpm mutation` locally.
+      Dedicated `vitest.mutation.config.ts` excludes the chdir-based
+      CLI e2e tests (worker-thread limitation). Reports uploaded
+      as a 14-day workflow artefact.
 - [x] ~~**Windows in CI**~~ — Shipped: CI matrix includes
       windows-latest. verify-pack uses an in-process gzip+tar
       parser; verify:sample is a Node script that captures stdout

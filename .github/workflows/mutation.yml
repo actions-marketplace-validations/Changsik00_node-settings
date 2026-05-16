@@ -1,0 +1,47 @@
+name: Mutation tests
+
+# Stryker is slow (10-30x regular test time) so we run it on a
+# nightly schedule, not per-PR. Use workflow_dispatch when you
+# want to verify after a substantial test-suite change.
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stryker:
+    name: Stryker mutation run
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run Stryker
+        run: pnpm mutation
+        env:
+          # Stryker spawns vitest in many child processes — keep the
+          # node heap modest so the runner does not OOM.
+          NODE_OPTIONS: "--max-old-space-size=4096"
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: reports/mutation
+          retention-days: 14
