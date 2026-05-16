@@ -40,8 +40,10 @@ thinking — feel free to re-rank during planning.
 
 ## env / config ergonomics
 
-- [ ] **Server / client schema split** (t3-oss/env-nextjs style) for
-      libraries that ship code to the browser. _(medium)_
+- [x] ~~**Server / client schema split** (t3-oss/env-nextjs style)~~
+      Shipped: `defineClientEnv({ prefix, schema, strict? })` at the
+      package root. Prefix enforced at definition time;
+      non-prefixed keys filtered at runtime.
 - [x] ~~**Build-time validation plugin** for Vite~~ — shipped:
       `import { nodeSettings } from "@changsik00/node-settings/vite"`.
       Next.js / esbuild variants are follow-up.

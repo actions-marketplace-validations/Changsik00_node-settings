@@ -10,6 +10,17 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ### Added
 
+- **`defineClientEnv` — server / client env split.** New factory at
+  the package root for browser-bundled env. Takes a `prefix`
+  (`NEXT_PUBLIC_` / `VITE_` / `PUBLIC_` / …) and a zod schema; throws
+  `CLIENT_ENV_PREFIX_VIOLATION` immediately if any schema key omits
+  the prefix, and at runtime filters non-prefixed keys out of the
+  source before zod sees them so server-only secrets can't leak in.
+  Opt-in `strict: true` flags extra prefixed keys not declared in the
+  schema. New error codes: `CLIENT_ENV_PREFIX_VIOLATION`,
+  `CLIENT_ENV_UNDECLARED`, `CLIENT_ENV_VALIDATION_FAILED`. Pair with
+  `defineSettings` (which stays server-only) — the prefix is your
+  compile-time *and* runtime firewall.
 - **Vite plugin** — `import { nodeSettings } from
   "@changsik00/node-settings/vite"`. Validates env at config-resolve
   time so `vite build` aborts before bundling on bad env, and the

@@ -22,7 +22,7 @@ Designed for backend Node apps (ESM, Node >= 18). Built for teams that ship the 
 
 ## API entry points
 
-- `@changsik00/node-settings`: `defineSettings`, `todo`, `isTodo`, `findTodos`, `loadDotenvCascade`, `loadDotenvFile`, `parseDotenv`, `loadNodeEnv`, `loadViteEnv`, `inferAppEnv`, `inferAppEnvDetailed`, `presets`, `deepMerge`, `mergePerEnv`, `introspectEnvSchema`, `checkPerEnvCompleteness`, `NodeSettingsError`, plus types.
+- `@changsik00/node-settings`: `defineSettings` (server-side full loader), `defineClientEnv` (prefix-gated browser env), `todo`, `isTodo`, `findTodos`, `loadDotenvCascade`, `loadDotenvFile`, `parseDotenv`, `loadNodeEnv`, `loadViteEnv`, `inferAppEnv`, `inferAppEnvDetailed`, `presets`, `deepMerge`, `mergePerEnv`, `introspectEnvSchema`, `checkPerEnvCompleteness`, `NodeSettingsError`, plus types.
 - `@changsik00/node-settings/generators`: `generateEnvExample`, `generatePerEnvExamples`, `generateMarkdownDocs`, `generateK8sManifests`, `generateJsonSchema`.
 - `@changsik00/node-settings/cli`: `runCli` (the binary's programmatic entry point).
 - `@changsik00/node-settings/vite`: `nodeSettings(options?)` — Vite plugin that runs env validation in `buildStart`; aborts `vite build` and (by default) `vite serve` on validation failure.

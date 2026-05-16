@@ -90,6 +90,7 @@ see [`sample/`](./sample).
 | Capability                                           | dotenv | dotenv-flow | t3-oss/env | convict | node-config | **node-settings** |
 | ---------------------------------------------------- | :----: | :---------: | :--------: | :-----: | :---------: | :---------------: |
 | zod-based env validation                             |   –    |      –      |     ✅     |    –    |      –      |        ✅         |
+| Server / client env split (prefix-checked)           |   –    |      –      |     ✅     |    –    |      –      |        ✅         |
 | `.env.<mode>` file cascade                           |   –    |     ✅      |     –      |    –    |      –      |        ✅         |
 | Per-env config layering (defaults → perEnv)          |   –    |      –      |     –      |   ✅    |     ✅      |        ✅         |
 | JSON runtime override                                |   –    |      –      |     –      |    –    | (env syntax)|        ✅         |
@@ -187,6 +188,44 @@ Plugin options (all optional):
 `vite build` always aborts on validation failure. The plugin reuses
 the same loader your runtime code calls, so the contract you ship is
 exactly the one your build was gated on.
+
+## Server / client env split
+
+Browser bundles must never see server-only secrets. `defineClientEnv`
+is a separate loader for the public, prefix-gated half of your env:
+
+```ts
+// settings.client.ts
+import { z } from "zod";
+import { defineClientEnv } from "@changsik00/node-settings";
+
+export const clientEnv = defineClientEnv({
+  prefix: "VITE_",
+  schema: z.object({
+    VITE_API_URL: z.string().url(),
+    VITE_SENTRY_DSN: z.string().optional(),
+  }),
+});
+
+// app code (browser)
+const env = clientEnv(import.meta.env);
+fetch(env.VITE_API_URL);
+```
+
+Three guarantees:
+
+- **Prefix enforced at definition time.** A schema key without the
+  prefix throws `CLIENT_ENV_PREFIX_VIOLATION` immediately —
+  mismatch is caught long before a secret reaches the bundle.
+- **Server keys filtered before zod sees them.** Any input key
+  without the prefix is dropped, so `clientEnv(process.env)` cannot
+  smuggle `DATABASE_URL` into the client.
+- **Optional `strict: true`** flags extra prefixed keys at runtime —
+  catches typos and forgotten-to-declare drift.
+
+Conventional prefixes: `NEXT_PUBLIC_` (Next.js), `VITE_` (Vite),
+`PUBLIC_` (Astro, SvelteKit). Pair with `defineSettings` for the
+server side; the prefix is your compile-time *and* runtime firewall.
 
 ## Documentation
 

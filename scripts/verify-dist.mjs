@@ -41,6 +41,7 @@ const vite = await import(DIST_VITE);
 const REQUIRED_ROOT = [
   // Core
   "defineSettings",
+  "defineClientEnv",
   // Errors
   "NodeSettingsError",
   // Todo sentinel
@@ -163,7 +164,42 @@ try {
   }
 }
 
+// defineClientEnv round-trip
+const clientEnv = root.defineClientEnv({
+  prefix: "VITE_",
+  schema: z.object({
+    VITE_API_URL: z.string().url(),
+  }),
+});
+const resolvedClient = clientEnv({
+  VITE_API_URL: "https://api.example.com",
+  DATABASE_URL: "postgres://secret",
+});
+assert.equal(resolvedClient.VITE_API_URL, "https://api.example.com");
+assert.equal(
+  resolvedClient.DATABASE_URL,
+  undefined,
+  "server-only key must NOT leak into client env",
+);
+try {
+  root.defineClientEnv({
+    prefix: "VITE_",
+    schema: z.object({ NOT_PREFIXED: z.string() }),
+  });
+  fail("expected CLIENT_ENV_PREFIX_VIOLATION throw");
+} catch (err) {
+  if (
+    !(err instanceof root.NodeSettingsError) ||
+    err.code !== "CLIENT_ENV_PREFIX_VIOLATION"
+  ) {
+    fail(
+      `expected CLIENT_ENV_PREFIX_VIOLATION; got ${err && err.code}`,
+    );
+  }
+}
+
 console.log(`OK    dist/ exposes ${REQUIRED_ROOT.length} root + ${REQUIRED_GEN.length} generator + 1 cli + 1 vite exports`);
 console.log(`OK    presets namespace has all ${REQUIRED_PRESET_KEYS.length} platforms`);
 console.log("OK    runtime round-trip + NodeSettingsError contract intact");
 console.log("OK    vite plugin shape (name + config/configResolved/buildStart hooks)");
+console.log("OK    defineClientEnv: server-only keys filtered + prefix violation caught");

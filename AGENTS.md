@@ -28,6 +28,7 @@ Import map:
 // Library
 import {
   defineSettings,
+  defineClientEnv,
   mergePerEnv,
   deepMerge,
   introspectEnvSchema,
@@ -103,6 +104,29 @@ bundling if env validation fails. In dev (`vite serve`) it aborts too
 unless `failOnDev: false`. Options: `config`, `mode`, `envDir`,
 `appEnvKey`, `failOnDev`. Vite is an optional peer dep — install only
 in projects that use it.
+
+### Server / client env split (`defineClientEnv`)
+
+`defineSettings` covers the *server*: full env + perEnv + secrets.
+For code that ships to the *browser*, use `defineClientEnv` instead —
+it's a small, separate factory that enforces a prefix
+(`NEXT_PUBLIC_` / `VITE_` / `PUBLIC_`) so server-only secrets can't
+leak in. Prefix is checked at definition time (throws
+`CLIENT_ENV_PREFIX_VIOLATION`) and non-prefixed keys are filtered
+out of the runtime source before zod sees them. Opt-in
+`strict: true` flags extra prefixed keys not declared in the schema.
+
+```ts
+import { z } from "zod";
+import { defineClientEnv } from "@changsik00/node-settings";
+
+export const clientEnv = defineClientEnv({
+  prefix: "VITE_",
+  schema: z.object({
+    VITE_API_URL: z.string().url(),
+  }),
+});
+```
 
 ## Core mental model
 
@@ -301,15 +325,19 @@ stable `code` plus an optional `hint`. Match on `code`, not `message`.
 | `INVALID_EXTENDS_ITEM`     | `extends[i]` is not a `defineSettings(...)` return value.    |
 | `OVERRIDE_JSON_PARSE`      | `overrideEnvKey` env var is not valid JSON.                  |
 | `ENV_VALIDATION_FAILED`    | Zod env validation failed at runtime.                        |
+| `CLIENT_ENV_PREFIX_VIOLATION` | `defineClientEnv` schema key missing the declared prefix. |
+| `CLIENT_ENV_UNDECLARED`    | `strict: true` saw a prefixed key not in the client schema.  |
+| `CLIENT_ENV_VALIDATION_FAILED` | Zod validation of the client-side env failed.            |
 
-The first six are raised at `defineSettings(...)` call time. The rest
-surface when the loader is invoked.
+The first six (plus `CLIENT_ENV_PREFIX_VIOLATION`) are raised at
+factory call time. The rest surface when the loader is invoked.
 
 ## File map
 
 ```
 src/
   define-settings.ts     # defineSettings(), SettingsLoader, extends merge
+  client-env.ts          # defineClientEnv() — prefix-gated browser-safe env
   introspect.ts          # zod schema -> EnvField[], secret detection
   errors.ts              # NodeSettingsError + codes
   validate-options.ts    # defensive checks run at defineSettings time

@@ -26,6 +26,11 @@ export {
 } from "./define-settings.js";
 
 export {
+  defineClientEnv,
+  type DefineClientEnvOptions,
+} from "./client-env.js";
+
+export {
   NodeSettingsError,
   type NodeSettingsErrorCode,
 } from "./errors.js";

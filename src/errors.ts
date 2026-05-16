@@ -25,7 +25,22 @@ export type NodeSettingsErrorCode =
   /** The `overrideEnvKey` env var is not parseable JSON. */
   | "OVERRIDE_JSON_PARSE"
   /** Zod env validation failed at runtime. */
-  | "ENV_VALIDATION_FAILED";
+  | "ENV_VALIDATION_FAILED"
+  /**
+   * `defineClientEnv` was given a schema key that does not start with the
+   * declared `prefix`. The whole point of the helper is to keep
+   * server-only secrets out of the client bundle, so this is fatal —
+   * either rename the key, or move it to the server-side `defineSettings()`.
+   */
+  | "CLIENT_ENV_PREFIX_VIOLATION"
+  /**
+   * `strict: true` was set on `defineClientEnv` and the runtime source
+   * contained a key starting with `prefix` that is NOT declared in the
+   * client schema. Catches typos and forgotten-to-declare drift.
+   */
+  | "CLIENT_ENV_UNDECLARED"
+  /** Zod validation of the client-side env failed. */
+  | "CLIENT_ENV_VALIDATION_FAILED";
 
 /**
  * Single error class for every problem this package can raise. Carries
