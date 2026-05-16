@@ -249,6 +249,61 @@ describe("CLI e2e — generate", () => {
     expect(text.slice(secStart)).toContain("DB_PASSWORD");
   });
 
+  it("generate tfvars emits HCL with placeholders + descriptions", async () => {
+    const out = join(tmp, "terraform.tfvars");
+    const code = await runCli([
+      "generate",
+      "tfvars",
+      "--config",
+      SAMPLE,
+      "--out",
+      out,
+    ]);
+    expect(code).toBe(0);
+    const text = readFileSync(out, "utf8");
+    expect(text).toMatch(/DB_HOST\s*=\s*"REPLACE_ME"/);
+    expect(text).toMatch(/DB_PASSWORD\s*=\s*"REPLACE_ME"/);
+    expect(text).toContain("# --- Secrets ---");
+  });
+
+  it("generate compose (service style default) emits a services: snippet", async () => {
+    const out = join(tmp, "compose.snippet.yml");
+    const code = await runCli([
+      "generate",
+      "compose",
+      "--config",
+      SAMPLE,
+      "--name",
+      "web",
+      "--out",
+      out,
+    ]);
+    expect(code).toBe(0);
+    const text = readFileSync(out, "utf8");
+    expect(text).toMatch(/^services:$/m);
+    expect(text).toMatch(/^ {2}web:$/m);
+    expect(text).toMatch(/DB_HOST: "\$\{DB_HOST\}"/);
+    expect(text).toMatch(/DB_PASSWORD: "\$\{DB_PASSWORD\}"/);
+  });
+
+  it("generate compose --style env-file emits KEY=VALUE lines", async () => {
+    const out = join(tmp, ".env.compose");
+    const code = await runCli([
+      "generate",
+      "compose",
+      "--config",
+      SAMPLE,
+      "--style",
+      "env-file",
+      "--out",
+      out,
+    ]);
+    expect(code).toBe(0);
+    const text = readFileSync(out, "utf8");
+    expect(text).toMatch(/^DB_HOST=REPLACE_ME$/m);
+    expect(text).toMatch(/^DB_PASSWORD=REPLACE_ME$/m);
+  });
+
   it("returns exit code 2 when generate target is missing", async () => {
     const code = await runCli(["generate"]);
     expect(code).toBe(2);

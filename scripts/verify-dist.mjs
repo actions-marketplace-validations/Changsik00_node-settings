@@ -88,6 +88,8 @@ const REQUIRED_GEN = [
   "generateMarkdownDocs",
   "generateK8sManifests",
   "generateJsonSchema",
+  "generateTfvars",
+  "generateComposeFragment",
 ];
 for (const name of REQUIRED_GEN) {
   if (gen[name] === undefined) {

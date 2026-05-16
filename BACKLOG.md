@@ -55,10 +55,13 @@ thinking — feel free to re-rank during planning.
 - [ ] **Build-time validation plugin** for esbuild — round out the
       "build-time plugin" claim to cover non-Vite, non-Next bundlers
       (Remix esbuild config, custom esbuild-based pipelines). _(medium)_
-- [ ] **`generate tfvars`** — Terraform variable file template from
-      the env schema, for IaC handoff. _(small)_
-- [ ] **`generate compose`** — `docker-compose.yml` `env_file` or
-      service-level `environment:` block from the schema. _(small)_
+- [x] ~~**`generate tfvars`** — Terraform variable file template~~
+      Shipped: `node-settings generate tfvars`. HCL output with
+      REPLACE_ME placeholders; programmatic `generateTfvars(...)`
+      exported from `/generators`.
+- [x] ~~**`generate compose`** — `docker-compose.yml` `env_file` or~~
+      ~~service-level `environment:` block.~~ Shipped: `node-settings
+      generate compose [--style service|env-file] [--name <svc>]`.
 
 ## Monorepo
 

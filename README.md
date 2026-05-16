@@ -99,13 +99,15 @@ see [`sample/`](./sample).
 | `todo(...)` sentinel for unfilled values             |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | **K8s ConfigMap + Secret YAML**                      |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | **K8s drift detection (`diff` CLI)**                 |   –    |      –      |     –      |    –    |      –      |        ✅         |
+| **Terraform `.tfvars` generation**                   |   –    |      –      |     –      |    –    |      –      |        ✅         |
+| **Docker Compose fragment generation**               |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | **Build-time validation plugins (Vite + Next.js)**   |   –    |      –      |     –      |    –    |      –      |        ✅         |
 | CLI (validate / check / inspect / generate)          |   –    |      –      |     –      |    –    |      –      |        ✅         |
 
 The differentiation is concentrated in monorepo composition, per-env
 layering with todo-sentinels, and first-class infra handoff (K8s
-manifests + Vite). `node-settings` is new; the others have years of
-usage behind them.
+manifests, Terraform tfvars, Docker Compose, Vite / Next.js plugins).
+`node-settings` is new; the others have years of usage behind them.
 
 ## CLI
 
@@ -138,6 +140,8 @@ npx node-settings generate envs         --out-dir env-samples/
 npx node-settings generate docs         --out ENV.md
 npx node-settings generate k8s          --name my-app --namespace prod --out k8s.yaml
 npx node-settings generate json-schema  --out env.schema.json
+npx node-settings generate tfvars       --out terraform.tfvars
+npx node-settings generate compose      --name web --out docker-compose.snippet.yml
 ```
 
 Auto-discovers `node-settings.config.{ts,js,...}` (or

@@ -10,6 +10,20 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ### Added
 
+- **`generate tfvars`** — Terraform `.tfvars` file from the schema.
+  Required values and secrets render as `REPLACE_ME` placeholders;
+  optional fields use their schema default. Booleans / numbers are
+  emitted as native HCL types. Pair with `variable "X" {}` blocks
+  alongside your Terraform resources. Pipe-friendly for IaC handoff
+  without manual transcription.
+- **`generate compose`** — Docker Compose fragment from the schema.
+  Default `--style service` yields a ready-to-merge `services:` block
+  with `${VAR:-default}` / `${VAR}` interpolation (so values stay in
+  the host shell / `.env`); `--style env-file` yields a flat
+  `KEY=VALUE` file for `env_file:` references. `--name` overrides
+  the service name (default `app`).
+- Both generators are exported from `@changsik00/node-settings/generators`
+  (`generateTfvars`, `generateComposeFragment`) for programmatic use.
 - **Next.js plugin** — `import { withNodeSettings } from
   "@changsik00/node-settings/next"`. Wraps the user's `next.config`
   as `withNodeSettings(nextConfig, options?)` and runs env

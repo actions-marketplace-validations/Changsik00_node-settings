@@ -7,6 +7,11 @@ import {
 import { generateMarkdownDocs } from "../generators/markdown.js";
 import { generateK8sManifests } from "../generators/k8s.js";
 import { generateJsonSchema } from "../generators/json-schema.js";
+import { generateTfvars } from "../generators/tfvars.js";
+import {
+  generateComposeFragment,
+  type ComposeStyle,
+} from "../generators/compose.js";
 import { loadUserConfig } from "./load-user-config.js";
 import type { ParsedArgs } from "./args.js";
 import { flagBool, flagString } from "./args.js";
@@ -20,7 +25,7 @@ export async function runGenerate(args: ParsedArgs): Promise<number> {
   const target = args.positionals[1];
   if (!target) {
     console.error(
-      "[node-settings] generate <target> required. Targets: env-example, envs, docs, k8s, json-schema",
+      "[node-settings] generate <target> required. Targets: env-example, envs, docs, k8s, json-schema, tfvars, compose",
     );
     return 2;
   }
@@ -101,9 +106,26 @@ export async function runGenerate(args: ParsedArgs): Promise<number> {
       output = result.yaml;
       break;
     }
+    case "tfvars":
+    case "terraform": {
+      output = generateTfvars(loader.envFields);
+      break;
+    }
+    case "compose":
+    case "docker-compose": {
+      const styleRaw = flagString(args, "style");
+      const style: ComposeStyle =
+        styleRaw === "env-file" ? "env-file" : "service";
+      const serviceName = flagString(args, "name") ?? "app";
+      output = generateComposeFragment(loader.envFields, {
+        style,
+        serviceName,
+      });
+      break;
+    }
     default: {
       console.error(
-        `[node-settings] unknown generate target '${target}'. Targets: env-example, envs, docs, k8s, json-schema`,
+        `[node-settings] unknown generate target '${target}'. Targets: env-example, envs, docs, k8s, json-schema, tfvars, compose`,
       );
       return 2;
     }

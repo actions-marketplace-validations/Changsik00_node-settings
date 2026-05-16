@@ -13,7 +13,8 @@ COMMANDS
   diff [file|-]          Compare a live K8s ConfigMap/Secret YAML
                          against the schema; flag drift + leaked secrets.
   generate <target>      Generate artifacts from the schema.
-                         Targets: env-example | envs | docs | k8s | json-schema
+                         Targets: env-example | envs | docs | k8s |
+                                  json-schema | tfvars | compose
 
 GLOBAL OPTIONS
   --config <path>        Path to the settings config file.
@@ -64,6 +65,13 @@ generate envs          --out-dir <dir>
 generate docs          [--out <path>] [--title <s>] [--intro <s>]
 generate k8s --name <app> [--namespace <ns>] [--inline-secrets] [--out <path>]
 generate json-schema   [--out <path>] [--title <s>] [--id <url>] [--description <s>]
+generate tfvars        [--out <path>]
+                       Writes a Terraform .tfvars file. Required values use
+                       REPLACE_ME placeholders; pass via TF_VAR_* env vars.
+generate compose       [--name <service>] [--style service|env-file] [--out <path>]
+                       Writes a Docker Compose snippet. Default 'service'
+                       style yields a complete services: block; 'env-file'
+                       yields a .env-style file for env_file: references.
 
 EXAMPLES
   node-settings validate .env.production
@@ -74,4 +82,6 @@ EXAMPLES
   node-settings generate envs --out-dir env-samples/
   node-settings generate docs --out ENV.md
   node-settings generate k8s --name my-app --namespace prod --out k8s.yaml
+  node-settings generate tfvars --out terraform.tfvars
+  node-settings generate compose --name web --out docker-compose.snippet.yml
 `;

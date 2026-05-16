@@ -17,3 +17,12 @@ export {
   generateJsonSchema,
   type JsonSchemaOptions,
 } from "./json-schema.js";
+export {
+  generateTfvars,
+  type TfvarsOptions,
+} from "./tfvars.js";
+export {
+  generateComposeFragment,
+  type ComposeFragmentOptions,
+  type ComposeStyle,
+} from "./compose.js";

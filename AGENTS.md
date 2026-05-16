@@ -68,6 +68,8 @@ Subcommands:
 | `node-settings generate docs`           | Write Markdown env documentation.          |
 | `node-settings generate k8s --name X`   | Write ConfigMap + Secret YAML.             |
 | `node-settings generate json-schema`    | Draft 2020-12 JSON Schema for the env.     |
+| `node-settings generate tfvars`         | Terraform `.tfvars` file from the schema.  |
+| `node-settings generate compose`        | docker-compose snippet (service \| env-file). |
 
 `validate` / `check` / `inspect` / `preflight` / `diff` accept
 `--format json` to emit a single structured document on stdout (in
