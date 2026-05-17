@@ -154,6 +154,45 @@ This sample exercises both:
 > does *not* fill in perEnv slots. Sentry DSN belongs in
 > `envSchema`; CDN domain belongs in `perEnv`.
 
+## Handling errors at boot
+
+What real boot code looks like — match on `err.code` for control flow
+and ship `reportError(err)` to your logger / dashboard for the
+structured view:
+
+```ts
+// boot.ts (the entrypoint of your app)
+import { loadDotenvCascade, NodeSettingsError, reportError } from "@env-kit/node-settings";
+import settings from "./settings.js";
+
+declare const logger: { error: (payload: unknown) => void };
+
+try {
+  const { env, mode } = loadDotenvCascade();
+  const cfg = settings(env);            // throws if env / perEnv is wrong
+  console.log(`booting in ${mode} mode on port ${cfg.port}`);
+  // ... start the server with `cfg` ...
+} catch (err) {
+  if (err instanceof NodeSettingsError) {
+    if (err.severity === "config") {
+      // Misconfiguration in source — fix the code, not the env.
+      // CI should never have let this reach prod; this is a developer-time alarm.
+    } else if (err.severity === "runtime") {
+      // Bad env at boot — page the on-call operator, not the developer.
+    } else if (err.severity === "io") {
+      // FS / parse failure — usually CI or the deploy platform.
+    }
+    console.error(`${err.title}: ${err.message}`);
+    console.error(`  see ${err.docsUrl}`);
+  }
+  logger.error(reportError(err));       // structured payload for log aggregators
+  process.exit(1);
+}
+```
+
+`reportError()` returns the same shape the CLI's `--format=json`
+emits, so dashboards built on one cover the other.
+
 ## Try the CLI against this sample
 
 From the repo root:
