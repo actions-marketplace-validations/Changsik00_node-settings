@@ -8,6 +8,7 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ## [Unreleased]
 
+## [1.0.2] — 2026-05-17
 ### Documentation
 
 - **Cascading is now the headline.** README tagline rewritten to
