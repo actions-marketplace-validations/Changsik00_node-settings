@@ -16,6 +16,8 @@ One zod schema → typed runtime config + `.env.example` + Markdown docs + Kuber
 
 [**Sample**](./sample) · [**Configuration**](./docs/CONFIGURATION.md) · [**Deployment**](./docs/DEPLOYMENT.md) · [**Errors**](./docs/ERRORS.md) · [**Architecture**](./docs/ARCHITECTURE.md) · [**Testing**](./docs/TESTING.md)
 
+_For teams that ship the same image to many environments and want every downstream artefact — `.env.example`, K8s manifests, Markdown docs, JSON Schema — derived from a single zod schema instead of hand-maintained._
+
 </div>
 
 ---
@@ -138,7 +140,9 @@ For a complete worked example with split-file config + monorepo
 - **Schema-first, single source of truth.** One `z.object({...})`
   becomes runtime config, `.env.example`, Markdown docs, K8s ConfigMap +
   Secret, JSON Schema, Terraform `.tfvars`, and a docker-compose
-  fragment. Edit the schema, regenerate downstream — nothing can drift.
+  fragment. Wire `node-settings generate` into CI (or use one of the
+  build-time plugins) and the downstream artefacts can't drift from
+  the schema — edit the schema, regenerate, commit, done.
 - **Layered config.** `defaults` + `perEnv[mode]` + optional JSON
   override at boot. Result is `Object.freeze`'d.
 - **Build once, deploy many.** Same image, `APP_ENV`-driven branching.
@@ -223,8 +227,28 @@ The differentiation is concentrated in monorepo composition, per-env
 layering with todo-sentinels, first-class infra handoff (K8s manifests,
 Terraform tfvars, Docker Compose, Vite / Next / esbuild plugins), and
 the operational ergonomics around errors (catalog → severity →
-`reportError()` → log aggregator). `node-settings` is new; the others
-have years of usage behind them.
+`reportError()` → log aggregator).
+
+### Known trade-offs
+
+To balance the table above, here's what you give up by picking this
+over an older neighbour:
+
+- **Younger and smaller.** `dotenv` / `dotenv-flow` / `node-config`
+  have years of production miles and a much bigger community. This
+  library has the test scaffolding to compensate, but it's not the
+  same as battle-tested.
+- **One maintainer.** Maintained by [@Changsik00](https://github.com/Changsik00).
+  Response times depend on a human with a day job; see
+  [SECURITY.md](./SECURITY.md) for what to expect.
+- **ESM-only.** No CommonJS build. Requires `"type": "module"` (or a
+  bundler / loader equivalent) and Node ≥ 18.
+- **More concepts than a one-liner replacement.** If all you need is
+  `process.env.PORT`, `dotenv` is two lines. The complexity here
+  pays off when you have ≥ 2 environments, ≥ 1 secret, and want CI
+  to gate them.
+- **`zod` as a peer dep.** You ship `zod` whether you wanted to or
+  not. Worth it for the validation, but worth knowing.
 
 ## CLI
 

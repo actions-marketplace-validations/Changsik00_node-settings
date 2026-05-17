@@ -222,6 +222,15 @@ Adding a new error code:
    `err.severity === "<bucket>"`.
 5. `pnpm verify:errors` confirms steps 1–3 are in sync.
 
+**`docsAnchor` stability is part of the public contract.** `err.docsUrl`
+points at `${DEFAULT_DOCS_BASE}#${docsAnchor}`, which `main`-tracking
+sites — bookmarks, log aggregator links — depend on. The doc itself may
+be restructured freely, but **never rename an existing `docsAnchor`** —
+add an alias `<a id="old">` if a section needs to move. `DEFAULT_DOCS_BASE`
+itself points at the `main` branch by design so users always land on
+the current doc; pinning to a version tag is left to consumers via
+`reportError(err, { docsBase: '...' })`.
+
 ### 6. Single-source-of-truth as a recurring discipline
 
 The error catalog isn't a one-off; it's the same shape the package

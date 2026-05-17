@@ -8,6 +8,22 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ## [Unreleased]
 
+> ### ⚠️ Breaking changes (v0.x → v1.0.0)
+>
+> If you're upgrading from a `0.x` release, the following public API
+> changes require action. There is exactly one removal; everything
+> else is additive.
+>
+> | Change | Migration |
+> | --- | --- |
+> | **`loadViteEnv` removed.** Was a placeholder that returned `{}` and never did anything useful. | Vite consumers: use `import.meta.env` directly, or the `@env-kit/node-settings/vite` plugin for build-time validation. |
+> | `--format=json` payloads now carry extra fields (`severity`, `title`, `docsUrl`, `cause`). | Existing JSON consumers that ignore unknown fields stay green; if you parse with a strict schema, extend it. |
+> | `NodeSettingsErrorCode` union expanded by 5 codes (`CONFIG_NOT_FOUND`, `CONFIG_LOAD_FAILED`, `CONFIG_INVALID_EXPORT`, `FILE_READ_FAILED`, `K8S_YAML_PARSE_FAILED`). | Exhaustive `switch (err.code)` will warn in TS; add cases or a `default`. Runtime behaviour matches the previous bare `Error`s. |
+>
+> Everything else — the import names you already use, the CLI
+> subcommands, the loader return shape — is unchanged. See the
+> sections below for the full additive set.
+
 ### Documentation
 
 - **New [`docs/TESTING.md`](docs/TESTING.md)** — dedicated test
