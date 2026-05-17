@@ -8,6 +8,7 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-05-17
 > ### ⚠️ Breaking changes (v0.x → v1.0.0)
 >
 > If you're upgrading from a `0.x` release, the following public API
