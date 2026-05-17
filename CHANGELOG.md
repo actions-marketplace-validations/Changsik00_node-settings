@@ -8,6 +8,7 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ## [Unreleased]
 
+## [1.0.1] — 2026-05-17
 ### Added
 
 - **GitHub Marketplace listing** for the bundled composite Action
