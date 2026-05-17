@@ -19,7 +19,10 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      # Semver tags only (vMAJOR.MINOR.PATCH). Moving major tags like
+      # `v1` — used by Action consumers writing `uses: …@v1` to track
+      # the latest v1.x.y — must NOT trigger another npm publish.
+      - 'v[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
     inputs:
       tag:
