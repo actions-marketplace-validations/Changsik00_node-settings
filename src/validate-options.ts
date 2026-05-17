@@ -1,5 +1,33 @@
 import type { z } from "zod";
-import { NodeSettingsError } from "./errors.js";
+import { raise } from "./errors.js";
+
+/**
+ * Assert that a value has the runtime shape of a `SettingsLoader`
+ * (callable, with the `resolved` / `envFields` / `opts` metadata
+ * attached). Used both eagerly inside `defineSettings` (before merging
+ * parent schemas) and from {@link validateDefineSettingsOptions}.
+ */
+export function assertSettingsLoaderShape(
+  parent: unknown,
+  idx: number,
+): void {
+  const obj = parent as Record<string, unknown> | null;
+  if (
+    typeof parent !== "function" ||
+    obj === null ||
+    !("resolved" in obj) ||
+    !("envFields" in obj) ||
+    !("opts" in obj)
+  ) {
+    raise(
+      "INVALID_EXTENDS_ITEM",
+      `extends[${idx}] is not a valid SettingsLoader.`,
+      {
+        hint: "Every extends[] entry must be the return value of defineSettings(...).",
+      },
+    );
+  }
+}
 
 interface ZodDefSnapshot {
   typeName?: string;
@@ -48,10 +76,9 @@ interface ValidatedOptionsInput {
 export function validateDefineSettingsOptions(
   input: ValidatedOptionsInput,
 ): void {
-  // 1. envSchema must be a ZodObject (so introspection + .merge work)
   const ownTypeName = (input.ownEnvSchema._def as ZodDefSnapshot).typeName;
   if (ownTypeName !== "ZodObject") {
-    throw new NodeSettingsError(
+    raise(
       "INVALID_ENV_SCHEMA",
       `envSchema must be a z.object({...}). Got ${ownTypeName ?? "unknown"}.`,
       {
@@ -60,18 +87,16 @@ export function validateDefineSettingsOptions(
     );
   }
 
-  // 2. envKey must exist in the merged schema
   const shape = input.resolvedEnvSchema.shape;
   const knownKeys = Object.keys(shape);
   if (!(input.envKey in shape)) {
-    throw new NodeSettingsError(
+    raise(
       "MISSING_ENV_KEY",
       `envKey '${input.envKey}' is not defined in the envSchema.`,
-      { hint: `Known keys: ${knownKeys.join(", ") || "(none)"}` },
+      { hint: `Known keys: ${knownKeys.join(", ") || "(none)"}.` },
     );
   }
 
-  // 3. envKey must resolve to a string-like type (string / enum)
   const envKeyField = shape[input.envKey] as z.ZodTypeAny;
   const { typeName: envKeyType, inner: envKeyInner } = unwrapWrappers(envKeyField);
   if (
@@ -79,7 +104,7 @@ export function validateDefineSettingsOptions(
     envKeyType !== "ZodEnum" &&
     envKeyType !== "ZodNativeEnum"
   ) {
-    throw new NodeSettingsError(
+    raise(
       "INVALID_ENV_KEY_TYPE",
       `envKey '${input.envKey}' must resolve to z.string() or z.enum(...) (got ${envKeyType}).`,
       {
@@ -88,10 +113,9 @@ export function validateDefineSettingsOptions(
     );
   }
 
-  // 4. perEnv basic sanity
   const branchKeys = Object.keys(input.resolvedPerEnv);
   if (branchKeys.length === 0) {
-    throw new NodeSettingsError(
+    raise(
       "PER_ENV_EMPTY",
       "perEnv must define at least one environment branch.",
       {
@@ -100,73 +124,56 @@ export function validateDefineSettingsOptions(
     );
   }
 
-  // 5. If envKey is an enum, perEnv keys must be a *subset* of its values.
-  //    We deliberately don't require *every* enum value to have a branch —
-  //    the runtime guard handles missing branches, and `node-settings check`
-  //    is the right place to enforce completeness.
-  if (envKeyType === "ZodEnum") {
-    const allowed = (envKeyInner as z.ZodEnum<[string, ...string[]]>).options;
+  // perEnv keys must be a subset of the enum values, not the full set:
+  // missing branches are caught at runtime, and `node-settings check`
+  // is the dedicated place to enforce completeness.
+  const allowedEnumValues = enumValuesOf(envKeyType, envKeyInner);
+  if (allowedEnumValues) {
     for (const key of branchKeys) {
-      if (!allowed.includes(key)) {
-        throw new NodeSettingsError(
+      if (!allowedEnumValues.includes(key)) {
+        const label = envKeyType === "ZodNativeEnum" ? "native enum" : "enum";
+        raise(
           "PER_ENV_KEY_NOT_IN_ENUM",
-          `perEnv has branch '${key}', but envKey '${input.envKey}' enum only allows: ${allowed.join(", ")}.`,
+          `perEnv has branch '${key}', but envKey '${input.envKey}' ${label} only allows: ${allowedEnumValues.join(", ")}.`,
           {
             hint: `Either add '${key}' to the enum or remove the perEnv branch (likely a typo).`,
           },
         );
       }
     }
-  } else if (envKeyType === "ZodNativeEnum") {
+  }
+
+  if (input.overrideEnvKey !== undefined && !(input.overrideEnvKey in shape)) {
+    raise(
+      "INVALID_OVERRIDE_KEY",
+      `overrideEnvKey '${input.overrideEnvKey}' is not defined in the envSchema.`,
+      { hint: `Known keys: ${knownKeys.join(", ") || "(none)"}.` },
+    );
+  }
+
+  // Eager extends validation: defineSettings's merge step reaches into
+  // `.resolved`, so catching bad inputs here produces a clearer error
+  // than the "Cannot read 'resolved'" we'd otherwise get.
+  input.extendsList.forEach(assertSettingsLoaderShape);
+}
+
+/**
+ * Return the allowed string values for an enum-shaped zod type, or
+ * `undefined` when the type isn't an enum at all (so callers can
+ * short-circuit). Hides the ZodEnum / ZodNativeEnum branching.
+ */
+function enumValuesOf(
+  typeName: string,
+  inner: z.ZodTypeAny,
+): readonly string[] | undefined {
+  if (typeName === "ZodEnum") {
+    return (inner as z.ZodEnum<[string, ...string[]]>).options;
+  }
+  if (typeName === "ZodNativeEnum") {
     const values = Object.values(
-      (envKeyInner._def as { values?: Record<string, string | number> }).values ??
-        {},
+      (inner._def as { values?: Record<string, string | number> }).values ?? {},
     ).filter((v): v is string => typeof v === "string");
-    if (values.length > 0) {
-      for (const key of branchKeys) {
-        if (!values.includes(key)) {
-          throw new NodeSettingsError(
-            "PER_ENV_KEY_NOT_IN_ENUM",
-            `perEnv has branch '${key}', but envKey '${input.envKey}' native enum only allows: ${values.join(", ")}.`,
-            {
-              hint: `Either add '${key}' to the enum or remove the perEnv branch (likely a typo).`,
-            },
-          );
-        }
-      }
-    }
+    return values.length > 0 ? values : undefined;
   }
-
-  // 6. overrideEnvKey if present must exist in merged schema
-  if (input.overrideEnvKey !== undefined) {
-    if (!(input.overrideEnvKey in shape)) {
-      throw new NodeSettingsError(
-        "INVALID_OVERRIDE_KEY",
-        `overrideEnvKey '${input.overrideEnvKey}' is not defined in the envSchema.`,
-        { hint: `Known keys: ${knownKeys.join(", ") || "(none)"}` },
-      );
-    }
-  }
-
-  // 7. extends must be an array of valid SettingsLoader values.
-  //    The runtime merging logic already accesses `.resolved`; we check
-  //    eagerly here to produce a clearer error than "Cannot read 'resolved'".
-  if (input.extendsList.length > 0) {
-    input.extendsList.forEach((parent, idx) => {
-      if (
-        typeof parent !== "function" ||
-        !("resolved" in (parent as unknown as Record<string, unknown>)) ||
-        !("envFields" in (parent as unknown as Record<string, unknown>)) ||
-        !("opts" in (parent as unknown as Record<string, unknown>))
-      ) {
-        throw new NodeSettingsError(
-          "INVALID_EXTENDS_ITEM",
-          `extends[${idx}] is not a valid SettingsLoader.`,
-          {
-            hint: "Every extends[] entry must be the return value of defineSettings(...).",
-          },
-        );
-      }
-    });
-  }
+  return undefined;
 }
