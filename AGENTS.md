@@ -355,7 +355,7 @@ not `message`.
 
 ```ts
 try {
-  const cfg = settings(process.env);
+  const settings = loadSettings(process.env);
 } catch (err) {
   if (err instanceof NodeSettingsError) {
     if (err.severity === "runtime") {

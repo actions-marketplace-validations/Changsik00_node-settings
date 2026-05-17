@@ -8,6 +8,27 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ## [Unreleased]
 
+### Documentation
+
+- **Cascading is now the headline.** README tagline rewritten to
+  "Schema-first settings for Node apps — cascading config across env
+  files, per-env config files, and packages." The TL;DR diagram is
+  redrawn as **two parallel file streams** (env-var files +
+  per-env config files) flowing into one frozen `settings`, and the
+  surrounding bullets brand three explicit cascades (env-var files
+  via `loadDotenvCascade()` / per-env config files via
+  `defaults` + `perEnv` / monorepo `extends: [base]`) plus the
+  `APP_CONFIG_JSON` runtime override. `sample/README.md` diagram
+  updated to match. `package.json` `description` aligned to the
+  same framing so the npm preview and the README header agree.
+- **Naming convention in docs: `cfg` → `settings`, `settings` →
+  `loadSettings`.** Examples in README, sample, AGENTS, ERRORS,
+  DEPLOYMENT, migration guides, and `src/*` JSDoc consistently use
+  `loadSettings` for the function returned by `defineSettings(...)`
+  and `settings` for the frozen, layered result of calling it.
+  Public API surface, runtime behaviour, and exported names are
+  unchanged — this is convention only.
+
 ## [1.0.1] — 2026-05-17
 ### Added
 

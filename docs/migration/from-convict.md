@@ -91,8 +91,8 @@ export default defineSettings({
 | `env: "VAR_NAME"` (separate mapping) | The zod key **is** the env var name | Less indirection — `DB_HOST: z.string()` in `envSchema` reads `process.env.DB_HOST` directly. |
 | `sensitive: true` | Auto-detected by `DEFAULT_SECRET_PATTERNS` (PASSWORD, TOKEN, SECRET, …) | Override with explicit `secretPatterns` in introspect options if your naming doesn't match. |
 | `config.loadFile("./config/...")` | `perEnv: { local, dev, stage, prod }` in source | Per-env config lives in typed TS code instead of JSON files. (You can still load files if you prefer — see the `sample/config/` pattern.) |
-| `config.get("db.host")` (string path) | `cfg.db.host` (typed) | TypeScript catches typos at compile time. |
-| `config.validate({ allowed: "strict" })` | runs automatically when you call the loader | No two-step "construct then validate" — validation is part of `settings(env)`. |
+| `config.get("db.host")` (string path) | `settings.db.host` (typed) | TypeScript catches typos at compile time. |
+| `config.validate({ allowed: "strict" })` | runs automatically when you call the loader | No two-step "construct then validate" — validation is part of `loadSettings(env)`. |
 | `arg: "--port"` (CLI args mapped to config) | not built-in | Use `commander` / `yargs` for CLI args, then pass them to settings as part of the env map. |
 
 ## Step-by-step
@@ -133,8 +133,8 @@ export default defineSettings({
    `DeepPartial<AppConfig>` — the compiler now catches typos.
 
 5. **Replace `config.get("path")` call sites** with typed property
-   access: `settings.dbHost` → `cfg.dbHost`. Run TypeScript; the
-   errors are your migration TODO list.
+   access: `config.get("dbHost")` → `settings.dbHost`. Run TypeScript;
+   the errors are your migration TODO list.
 
 6. **Drop `config.loadFile(...)` calls** — `perEnv` handles this now.
 

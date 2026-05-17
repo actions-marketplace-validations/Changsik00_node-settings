@@ -87,8 +87,8 @@ export default defineSettings({
 | `config/<NODE_ENV>.yaml` (or `.json`) | `perEnv: { development, production, ... }` | Same cascade idea, now in TS. |
 | `config/local.yaml` | `perEnv` entry for whichever `envKey` value you use locally, OR a `.env.local` for env-side overrides | We don't ship a magic `local.yaml` — committed perEnv handles per-env stuff; `.env.local` (gitignored) handles per-machine stuff. |
 | `config/custom-environment-variables.yaml` | `envSchema` (zod) | The "env vars mapped to config keys" indirection goes away — env vars are validated directly, then folded in via the `build()` function. |
-| `config.get("db.host")` | `cfg.db.host` | Typed property access. |
-| `config.has("foo.bar")` | `"bar" in cfg.foo` or optional-chained checks | Optional fields are typed `T \| undefined`. |
+| `config.get("db.host")` | `settings.db.host` | Typed property access. |
+| `config.has("foo.bar")` | `"bar" in settings.foo` or optional-chained checks | Optional fields are typed `T \| undefined`. |
 | File-format flexibility (YAML, JSON, JS, .toml, …) | TypeScript only | We chose TS for full type checking. Convert your YAML to TS as part of the migration. |
 | Multiple `NODE_CONFIG_DIR` directories | Monorepo `extends` (t3-oss/env style) | Apps that share base config use `extends: [baseLoader]`. |
 

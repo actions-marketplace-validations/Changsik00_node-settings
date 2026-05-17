@@ -35,7 +35,7 @@ const envSchema = z.object({
   CONFIG_OVERRIDE_JSON: z.string().optional(),
 });
 
-const settings = defineSettings({
+const loadSettings = defineSettings({
   envSchema,
   envKey: "APP_ENV",
   overrideEnvKey: "CONFIG_OVERRIDE_JSON",
@@ -57,6 +57,6 @@ const settings = defineSettings({
   }),
 });
 
-export default settings;
-export type Settings = ReturnType<typeof settings>;
+export default loadSettings;
+export type Settings = ReturnType<typeof loadSettings>;
 export type { AppConfig };

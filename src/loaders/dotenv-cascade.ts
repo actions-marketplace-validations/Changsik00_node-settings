@@ -74,10 +74,10 @@ export interface DotenvCascadeResult {
  * ```ts
  * import { defineSettings, loadDotenvCascade } from "@env-kit/node-settings";
  *
- * const settings = defineSettings({ ... });
+ * const loadSettings = defineSettings({ ... });
  * const { env, mode } = loadDotenvCascade();
  * console.log(`Booting in ${mode} mode.`);
- * const cfg = settings(env);
+ * const settings = loadSettings(env);
  * ```
  */
 export function loadDotenvCascade(

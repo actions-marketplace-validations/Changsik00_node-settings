@@ -48,10 +48,10 @@ export default defineSettings({
 ```ts
 // at boot
 import { loadDotenvCascade } from "@env-kit/node-settings";
-import settings from "./settings.js";
+import loadSettings from "./settings.js";
 
-const { env } = loadDotenvCascade();   // same cascade as dotenv-flow
-export const cfg = settings(env);      // + validation + types + perEnv
+const { env } = loadDotenvCascade();        // same cascade as dotenv-flow
+export const settings = loadSettings(env);  // + validation + types + perEnv
 ```
 
 ## Feature mapping
@@ -63,7 +63,7 @@ export const cfg = settings(env);      // + validation + types + perEnv
 | `default_node_env` option | `defaultMode` option | Same idea — the mode to use when `appEnvKey` is unset. |
 | `silent: true` (suppress warnings on missing files) | always silent | Missing files are reported in `loadDotenvCascade()`'s `skipped` array for diagnostics; no console noise. |
 | Skip `.local` files in `test` | `skipLocalFor: ["test"]` (default already) | Same default behaviour. |
-| `process.env.DB_HOST` direct access | `cfg.dbHost` from the loader return | Typed, validated, frozen. |
+| `process.env.DB_HOST` direct access | `settings.dbHost` from the loader return | Typed, validated, frozen. |
 
 ## Step-by-step
 
@@ -100,14 +100,14 @@ export const cfg = settings(env);      // + validation + types + perEnv
    *infra-injected* values; perEnv handles *committed config that
    varies by env*.
 
-5. **Replace direct `process.env.X` reads** with `cfg.foo`. Lean on
+5. **Replace direct `process.env.X` reads** with `settings.foo`. Lean on
    TypeScript errors to find every site.
 
 6. **At boot**, swap `dotenvFlow.config()` for:
 
    ```ts
    const { env } = loadDotenvCascade();
-   export const cfg = settings(env);
+   export const settings = loadSettings(env);
    ```
 
    `loadDotenvCascade()` reads the same files in the same order
@@ -143,7 +143,7 @@ export const cfg = settings(env);      // + validation + types + perEnv
 - **Validation**: missing required env vars fail loudly at boot
   with a path-pointed zod error, instead of mysteriously
   `undefined` later in app code.
-- **Typed access**: `cfg.dbHost` instead of `process.env.DB_HOST!`
+- **Typed access**: `settings.dbHost` instead of `process.env.DB_HOST!`
   + the `!` non-null assertion that lies.
 - **Per-env config layering**: non-secret values that vary by env
   (bucket names, worker counts, feature flags) live in typed

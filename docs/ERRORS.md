@@ -8,7 +8,7 @@ carrying a stable `.code`, a severity classification, and an optional
 import { NodeSettingsError, reportError } from "@env-kit/node-settings";
 
 try {
-  const cfg = settings(process.env);
+  const settings = loadSettings(process.env);
 } catch (err) {
   if (err instanceof NodeSettingsError) {
     // Programmatic handling

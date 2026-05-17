@@ -386,11 +386,11 @@ Wire it up at boot:
 
 ```ts
 import { loadDotenvCascade } from "@env-kit/node-settings";
-import settings from "./settings.config.js";
+import loadSettings from "./settings.config.js";
 
 const { env, mode, loaded } = loadDotenvCascade();
 console.log(`Booting in '${mode}' mode. Loaded:`, loaded);
-export const cfg = settings(env);
+export const settings = loadSettings(env);
 ```
 
 Mode detection (priority):

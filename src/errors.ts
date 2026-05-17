@@ -157,7 +157,7 @@ export const DEFAULT_DOCS_BASE =
  * @example
  * ```ts
  * try {
- *   const cfg = settings(process.env);
+ *   const settings = loadSettings(process.env);
  * } catch (err) {
  *   if (err instanceof NodeSettingsError && err.code === 'ENV_VALIDATION_FAILED') {
  *     console.error('Bad env:', err.message);

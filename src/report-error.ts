@@ -60,7 +60,7 @@ export interface ReportErrorOptions {
  * @example
  * ```ts
  * try {
- *   const cfg = settings(process.env);
+ *   const settings = loadSettings(process.env);
  * } catch (err) {
  *   const report = reportError(err);
  *   if (report.severity === "runtime") {

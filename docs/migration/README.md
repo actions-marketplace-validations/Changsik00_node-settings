@@ -35,7 +35,7 @@ Every migration ends up with the same four-layer mental model:
                          build(env, config)
                               │
                               ▼
-                       Object.freeze ⇒ cfg
+                       Object.freeze ⇒ settings
 ```
 
 If your current library only covers one or two of those layers

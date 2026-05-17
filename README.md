@@ -1,6 +1,6 @@
 <div align="center">
 
-**Schema-first settings for Node apps.**
+**Schema-first settings for Node apps — cascading config across env files, per-env config files, and packages.**
 One zod schema → typed runtime config + `.env.example` + Markdown docs + Kubernetes manifests + a CLI that gates deploys in CI.
 
 [![npm version](https://img.shields.io/npm/v/@env-kit/node-settings?color=cb3837&label=npm&logo=npm)](https://www.npmjs.com/package/@env-kit/node-settings)
@@ -33,7 +33,7 @@ pnpm add @env-kit/node-settings zod
 import { z } from "zod";
 import { defineSettings } from "@env-kit/node-settings";
 
-const settings = defineSettings({
+const loadSettings = defineSettings({
   // 1. envSchema — the contract for env vars. CI/infra injects these.
   //    Key names matching DEFAULT_SECRET_PATTERNS (PASSWORD, TOKEN, …)
   //    are auto-flagged as secrets, so they land in K8s Secret (not
@@ -89,48 +89,58 @@ const settings = defineSettings({
   }),
 });
 
-export default settings;
-export type Settings = ReturnType<typeof settings>;
+export default loadSettings;
+export type Settings = ReturnType<typeof loadSettings>;
 ```
 
 ```ts
-// at boot — three sources resolve into one frozen settings object
+// at boot — three cascades resolve into one frozen `settings` object
 import { loadDotenvCascade } from "@env-kit/node-settings";
-import settings from "./settings.config.js";
+import loadSettings from "./settings.config.js";
 
 const { env, mode } = loadDotenvCascade();
 //   .env → .env.local → .env.<mode> → .env.<mode>.local → process.env
 //   (Vite / Next / dotenv-flow convention; later sources win)
 
-export const cfg = settings(env); // → validate → layer → override → frozen
+export const settings = loadSettings(env); // → validate → layer → override → frozen
 ```
 
-**One factory, every source**:
+**Two file streams cascade into one frozen `settings`**:
 
 ```
-files (cascade)        ┐
-   .env                │
-   .env.local          │
-   .env.<mode>         ├─► process.env  ─►  envSchema.parse() (zod)
-   .env.<mode>.local   │     wins                      │
-                       ┘                               ▼
-                                              envKey selects perEnv[mode]
-                                                       │
-              defaults  ⊕  perEnv[mode]  ⊕  JSON override (APP_CONFIG_JSON)
-                            (deep merge, right wins at each layer)
-                                                       │
-                                                       ▼
-                                                  build(env, config)
-                                                       │
-                                                       ▼
-                                                Object.freeze ⇒ cfg
+env files                             per-env config files
+  .env                                  config/defaults.ts
+  .env.local                            config/<mode>.ts
+  .env.<mode>                           (or inline `perEnv: {...}`)
+  .env.<mode>.local
+  process.env  ← CI / Vault wins        ⊕ APP_CONFIG_JSON  ← runtime override
+        │                                       │
+        ▼ envSchema.parse() (zod)               ▼ deep-merge, later wins
+       env                                   config
+          \                                  /
+           \                                /
+            ─────► build(env, config) ◄────
+                          │
+                          ▼
+                  Object.freeze ⇒ settings
 ```
 
-- **`.env` files** — automatic cascade; missing files are skipped silently.
-- **`process.env`** — CI / Kubernetes / Vault inject here; always wins over files.
-- **`defaults` + `perEnv[mode]`** — committed config, layered by env.
-- **`APP_CONFIG_JSON`** — runtime override env var. Deploy the same image,
-  change behaviour via `APP_CONFIG_JSON='{"bucket":"failover"}'`. No rebuild.
+Three cascades, one frozen `settings`:
+
+- **Cascade 1 — env-var files** (`loadDotenvCascade()`).
+  `.env → .env.local → .env.<mode> → .env.<mode>.local → process.env`,
+  later sources win. CI / Kubernetes / Vault inject directly into
+  `process.env`, which beats every file.
+- **Cascade 2 — per-env config files.** `config/defaults.ts` is the
+  baseline; `config/<mode>.ts` is `DeepPartial<AppConfig>` deep-merged
+  on top. Inline `defaults: {...}` / `perEnv: {...}` is the same shape
+  — split into files when they outgrow one screen.
+- **Cascade 3 — `extends: [base]` (monorepo).** A base loader's
+  `envSchema` / `defaults` / `perEnv` are merged in *before* the child's
+  own. [t3-oss/env](https://github.com/t3-oss/t3-env)-style composition.
+- **Runtime override.** `APP_CONFIG_JSON='{"bucket":"failover"}'`
+  deep-merges on top of cascades 1–3. Same image, different config —
+  built for canaries and incident response.
 
 For a complete worked example with split-file config + monorepo
 `extends` + env templates, see [`sample/`](./sample).
@@ -408,7 +418,7 @@ import { NodeSettingsError, reportError } from "@env-kit/node-settings";
 declare const log: (payload: unknown) => void;
 
 try {
-  // ... settings(process.env) etc.
+  // ... loadSettings(process.env) etc.
   throw new NodeSettingsError("ENV_VALIDATION_FAILED", "demo");
 } catch (err) {
   if (err instanceof NodeSettingsError) {

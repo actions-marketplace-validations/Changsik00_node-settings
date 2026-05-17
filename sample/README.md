@@ -42,29 +42,28 @@ upgrade of that pattern.
 ## How a value gets to your code
 
 ```
-.env                ┐
-.env.local          │
-.env.<mode>         ├─► loadDotenvCascade() ─►  process.env (wins over files)
-.env.<mode>.local   │                                  │
-CI / Vault / ...    ┘                                  ▼
-                                              envSchema.parse() (zod)
-                                                       │
-                                              envKey selects perEnv[mode]
-                                                       │
-        config/defaults.ts  ⊕  config/<mode>.ts  ⊕  CONFIG_OVERRIDE_JSON
-                                                       │
-                                                       ▼
-                                                 build(env, config)
-                                                       │
-                                                       ▼
-                                                Object.freeze ⇒ cfg
+env files                             per-env config files
+  .env                                  config/defaults.ts
+  .env.local                            config/<mode>.ts
+  .env.<mode>                           (these are typed DeepPartial<AppConfig>)
+  .env.<mode>.local
+  process.env  ← CI / Vault wins        ⊕ CONFIG_OVERRIDE_JSON  ← runtime override
+        │                                       │
+        ▼ envSchema.parse() (zod)               ▼ deep-merge, later wins
+       env                                   config
+          \                                  /
+           \                                /
+            ─────► build(env, config) ◄────
+                          │
+                          ▼
+                  Object.freeze ⇒ settings
 ```
 
-At every `⊕` step a value from a later source wins over the earlier
-ones — deep-merged so nested fields combine field-by-field rather
+Two file streams, one frozen object. At every step a later source wins over
+the earlier ones — deep-merged so nested fields combine field-by-field rather
 than replace wholesale.
 
-### Worked example: `cfg.bucket` in production
+### Worked example: `settings.bucket` in production
 
 Walk through one key, top to bottom:
 
@@ -76,9 +75,9 @@ Walk through one key, top to bottom:
 | 4 | `config/defaults.ts`: `defaults.bucket = ""` | `""` |
 | 5 | `config/prod.ts`: `bucket: "prod-bucket"` | **`"prod-bucket"`** |
 | 6 | `CONFIG_OVERRIDE_JSON` not set → no override | `"prod-bucket"` |
-| 7 | `build(env, config)` returns `{ ..., bucket: config.bucket }` | `cfg.bucket === "prod-bucket"` |
+| 7 | `build(env, config)` returns `{ ..., bucket: config.bucket }` | `settings.bucket === "prod-bucket"` |
 
-### Worked example: `cfg.dbHost` in dev
+### Worked example: `settings.dbHost` in dev
 
 Same key, env-injected this time:
 
@@ -89,7 +88,7 @@ Same key, env-injected this time:
 | 3 | CI sets `DB_HOST=db-replica-7.dev.internal` (overrides .env files) | `"db-replica-7.dev.internal"` |
 | 4 | `envSchema.parse({ DB_HOST: ... })` validates as `string` | `"db-replica-7.dev.internal"` |
 | 5 | `config/*` doesn't touch `dbHost` (it's not in the AppConfig shape) | — |
-| 6 | `build(env, config)` returns `{ dbHost: env.DB_HOST, ... }` | `cfg.dbHost === "db-replica-7.dev.internal"` |
+| 6 | `build(env, config)` returns `{ dbHost: env.DB_HOST, ... }` | `settings.dbHost === "db-replica-7.dev.internal"` |
 
 The cascade only goes through files; CI / Vault / Kubernetes Secret
 inject directly into `process.env`, which is the final word.
@@ -163,15 +162,15 @@ structured view:
 ```ts
 // boot.ts (the entrypoint of your app)
 import { loadDotenvCascade, NodeSettingsError, reportError } from "@env-kit/node-settings";
-import settings from "./settings.js";
+import loadSettings from "./settings.js";
 
 declare const logger: { error: (payload: unknown) => void };
 
 try {
   const { env, mode } = loadDotenvCascade();
-  const cfg = settings(env);            // throws if env / perEnv is wrong
-  console.log(`booting in ${mode} mode on port ${cfg.port}`);
-  // ... start the server with `cfg` ...
+  const settings = loadSettings(env);   // throws if env / perEnv is wrong
+  console.log(`booting in ${mode} mode on port ${settings.port}`);
+  // ... start the server with `settings` ...
 } catch (err) {
   if (err instanceof NodeSettingsError) {
     if (err.severity === "config") {
@@ -223,15 +222,15 @@ node-settings preflight .env.local --config sample/settings.ts
    + `config/defaults.ts` + one `config/<mode>.ts` and grow.
 2. **Add `.env*` to your real `.gitignore`** (see `sample/.gitignore`
    — that's a template you can drop in).
-3. At boot, hand the cascade output to `settings`:
+3. At boot, hand the cascade output to your loader:
 
    ```ts
    import { loadDotenvCascade } from "@env-kit/node-settings";
-   import settings from "./settings.js";
+   import loadSettings from "./settings.js";
 
    const { env, mode } = loadDotenvCascade();
    console.log(`Booting in ${mode} mode`);
-   export const cfg = settings(env);
+   export const settings = loadSettings(env);
    ```
 
    For Vite or Next.js, add the build-time plugin and you're done —
