@@ -8,6 +8,21 @@ under `[Unreleased]` and are promoted to a versioned section when
 
 ## [Unreleased]
 
+### Added
+
+- **GitHub Marketplace listing** for the bundled composite Action
+  (`action.yml`). Action code is unchanged from v1.0.0 — this is a
+  discoverability release so Marketplace search surfaces the Action
+  without users needing to know the npm package name first. Users
+  invoke it as `uses: Changsik00/node-settings@v1`.
+
+### Changed
+
+- **`release.yml` tag trigger restricted to semver only**
+  (`v[0-9]+.[0-9]+.[0-9]+`). Movable major tags (`v1`, `v2`, …) that
+  Action consumers track via `uses: …@v1` no longer trigger a
+  duplicate npm publish.
+
 ## [1.0.0] — 2026-05-17
 > ### ⚠️ Breaking changes (v0.x → v1.0.0)
 >
