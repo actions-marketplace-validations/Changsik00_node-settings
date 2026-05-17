@@ -181,29 +181,62 @@ for I/O. To add a new generator:
 3. Wire into `src/cli/generate.ts`.
 4. Snapshot test in `src/generators/snapshots.test.ts` (or sibling).
 
-### 5. Error throwing
+### 5. Error throwing — catalog-backed
 
-Every `throw` in this package goes through `NodeSettingsError` with a
-stable `code` and a `hint`. Never throw bare `Error` from library code.
+Every `throw` in this package goes through the `raise(code, message, opts)`
+helper, which constructs a `NodeSettingsError` with a stable `code`
+that's registered in [`ERROR_CATALOG`](../src/errors.ts). Never throw
+bare `Error` from library code.
 
 ```ts
-throw new NodeSettingsError(
+raise(
   "PER_ENV_BRANCH_MISSING",
-  `perEnv has no branch for '${envValue}'. Known: ${keys}`,
+  `perEnv has no branch for '${envValue}'. Known: ${keys}.`,
   { hint: `Add perEnv['${envValue}'] = {...}.`, cause: err },
 );
 ```
 
-Message structure: `<what failed>: <observed state>`. Hint structure:
-`<concrete action the user should take>`. Pass `cause` when wrapping
+The catalog is the *single source of truth* — same philosophy the
+public API applies to user schemas:
+
+| What flows from the catalog        | How                                                                        |
+| ---------------------------------- | -------------------------------------------------------------------------- |
+| `NodeSettingsErrorCode` union type | `keyof typeof ERROR_CATALOG`                                               |
+| `err.severity` / `err.title`       | `NodeSettingsError` getters read the catalog at runtime                    |
+| `err.docsUrl`                      | `DEFAULT_DOCS_BASE` + `entry.docsAnchor`                                   |
+| `reportError(err)` shape           | catalog lookup populates `code`, `severity`, `title`, `docsUrl`            |
+| `docs/ERRORS.md` catalog table     | `pnpm gen:errors-doc` regenerates between `<!-- BEGIN/END AUTO-GENERATED -->` markers |
+| `pnpm verify:errors`               | fails if any entry has no `raise(...)` call site or any anchor is missing  |
+
+Message structure: `<what failed>: <observed state>.`. Hint structure:
+`<concrete action the user should take>.`. Pass `cause` when wrapping
 another error (zod, fs, etc.) so consumers can drill in.
 
 Adding a new error code:
 
-1. Add to the union in `errors.ts` with a JSDoc explaining when it fires.
-2. Document in AGENTS.md "Error handling" table.
-3. Document in `docs/ERRORS.md` with at least one example.
-4. Cover with a test that asserts `err.code === "NEW_CODE"`.
+1. Add an entry to `ERROR_CATALOG` with severity, title, and docsAnchor.
+   The `NodeSettingsErrorCode` union extends automatically.
+2. Add at least one `raise("NEW_CODE", ...)` call site somewhere in `src/`.
+3. Run `pnpm build && pnpm gen:errors-doc` to refresh `docs/ERRORS.md`.
+4. Cover with a test that asserts `err.code === "NEW_CODE"` and, ideally,
+   `err.severity === "<bucket>"`.
+5. `pnpm verify:errors` confirms steps 1–3 are in sync.
+
+### 6. Single-source-of-truth as a recurring discipline
+
+The error catalog isn't a one-off; it's the same shape the package
+asks of users. Wherever a fact could be expressed in two places, the
+package picks one and derives the rest:
+
+| Single source            | Derived artifacts                                                              |
+| ------------------------ | ------------------------------------------------------------------------------ |
+| The user's `z.object`    | runtime config, `.env.example`, Markdown docs, K8s manifests, JSON Schema, tfvars, docker-compose snippet |
+| `ERROR_CATALOG`          | `NodeSettingsErrorCode` type, `err.severity`/`docsUrl`, `reportError` output, `docs/ERRORS.md` catalog table |
+| `api-surface/*.d.ts`     | the contract `verify:api` checks every build against                           |
+| The CLI subcommand result types | both human text rendering AND `--format=json` wire shape                 |
+
+The pattern: define the data once, generate everything downstream,
+verify nothing has drifted. Use it when adding new derived artifacts.
 
 ### 6. Preset pattern
 
@@ -233,27 +266,60 @@ All three plugins:
 When adding a new build-tool integration, mirror the existing three
 plugins' option shape: `{ config?, mode?, envDir?, appEnvKey?, failOnDev? }`.
 
+### 8. Dispatch registry for `generate` subcommands
+
+`cli/generate.ts` uses a registry instead of a switch:
+
+```ts
+const HANDLERS: readonly GenerateHandler[] = [
+  { aliases: ["env-example", "env"], run: (loader)    => ... },
+  { aliases: ["k8s", "kubernetes"],   run: (loader, args) => ... },
+  // ...
+];
+
+const HANDLER_BY_ALIAS: ReadonlyMap<string, GenerateHandler> =
+  new Map(HANDLERS.flatMap((h) => h.aliases.map((a) => [a, h] as const)));
+```
+
+Each handler returns a tagged outcome (`output` / `done` / `exit`)
+so the dispatcher knows whether to write to `--out`, exit early, or
+treat the handler as terminal. Adding a new `generate` target is a
+single entry plus a generator function — no scattered case branches.
+
+### 9. Shared workspace runner (CLI subcommands)
+
+`check`, `inspect`, and `preflight` all support `--workspace`. The
+"discover packages → iterate → render header/banners" boilerplate
+lives in `cli/workspace-runner.ts`:
+
+```ts
+const ctx = setupWorkspaceRun(args);
+if (typeof ctx === "number") return ctx;  // "no packages" exit code 2
+for (const pkg of ctx.packages) { ... }
+if (!ctx.json) {
+  printWorkspaceHeader(ctx.root, ctx.packages.length);
+  for (const p of result.packages) {
+    printPackageBanner(ctx.root, p.name, p.configPath);
+    ...
+  }
+}
+```
+
+Each subcommand keeps its bespoke result type and aggregation rules;
+the helpers own only the character-for-character identical bits.
+
 ## Testing strategy
 
-| Layer            | File                                  | Purpose                                          |
-| ---------------- | ------------------------------------- | ------------------------------------------------ |
-| Unit             | `src/**/<name>.test.ts`               | One module, isolated. Most coverage lives here.  |
-| Type-level       | `src/types.test.ts`                   | `expectTypeOf` assertions for inferred types.    |
-| CLI end-to-end   | `src/cli/cli-e2e.test.ts`             | `runCli(['validate', ...])` returns expected exit code. |
-| Generator snapshots | `src/generators/snapshots.test.ts` + `__snapshots__/` | Output diffs visible in review. |
-| Mutation         | `pnpm mutation` (Stryker, nightly)    | Surfaces tests that pass without the mutated code mattering. |
+Tests follow the industry-standard **unit / contract / integration /
+e2e** taxonomy plus a 9-layer verify chain (typecheck → coverage →
+build → verify:dist / sample / api / docs / errors / pack). Each
+category has its own `pnpm test:<category>` script for focused dev
+loops; `pnpm test` runs everything in one pass and CI uses
+`pnpm verify` for the full gate.
 
-Conventions:
-
-- One `describe` block per public function. Nested describes for
-  sub-cases.
-- Test **observable behaviour**, not implementation. If a test breaks
-  on a refactor that didn't change behaviour, the test was wrong.
-- For error paths: assert on `err.code`, never on `err.message`
-  (messages may evolve; codes are part of the API contract).
-- For generator changes: regenerate snapshots only when the output
-  diff is intentional. Each diff lands in a single commit so the
-  before/after is reviewable.
+See [**docs/TESTING.md**](./TESTING.md) for the complete taxonomy,
+decision tree for new tests, conventions, coverage philosophy, and
+mutation-testing setup.
 
 ## Adding a new feature: the checklist
 
